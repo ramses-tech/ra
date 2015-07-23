@@ -10,6 +10,7 @@ requires = [
     'WebTest',
     'WSGIProxy2',
     'ramlfications==0.1.5',
+    'jsonschema',
     'six',
 ]
 

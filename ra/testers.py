@@ -1,3 +1,6 @@
+from jsonschema import validate as jschema_validate
+
+
 from .raml_utils import (
     get_response_by_code,
     get_schema_by_mediatype,
@@ -31,24 +34,32 @@ class ResourceTester(TesterBase):
             self.resource.absolute_uri, *args, **kwargs)
 
     def test_body(self, response):
+        step_name = 'Test response body'
         raml_resp = get_response_by_code(
             self.resource, response.status_code)
         if raml_resp is None:
-            self.log_skip('Test response body')
-            self.save_error('No response body specified for status '
-                            'code {}'.format(response.status_code))
+            self.output_skip(step_name)
+            self.save_skip('No response body specified for status '
+                           'code {}'.format(response.status_code))
             return
 
         media_type = 'application/json'
         schema = get_schema_by_mediatype(raml_resp, media_type)
         if schema is None:
-            self.log_skip('Test response body')
-            self.save_error('No body schema specified for content type '
-                            '{} and status code {}'.format(
-                                media_type, response.status_code))
+            self.output_skip(step_name)
+            self.save_skip(
+                'No body schema specified for content type '
+                '{} and status code {}'.format(
+                    media_type, response.status_code))
             return
 
-        self.log_ok('Test response body')
+        try:
+            jschema_validate(response.json, schema)
+        except Exception as ex:
+            self.output_fail(step_name)
+            self.save_fail(str(ex))
+        else:
+            self.output_ok(step_name)
 
     def test(self):
         response = self.request()
@@ -91,8 +102,8 @@ class RAMLTester(TesterBase):
 
             tester = ResourceTester(resource, self.testapp)
             tester.test()
-            self.merge_errors(tester)
+            self.merge_reports(tester)
 
     def test(self):
         self.test_resources()
-        self.show_errors()
+        self.show_report()

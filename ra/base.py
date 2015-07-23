@@ -28,11 +28,15 @@ class Colors(object):
 
 class TesterBase(object):
     def __init__(self, *args, **kwargs):
-        self.errors = []
+        self.fails = []
+        self.skips = []
         super(TesterBase, self).__init__(*args, **kwargs)
 
-    def save_error(self, err_message):
-        self.errors.append('{}: {}'.format(self, err_message))
+    def save_fail(self, err_message):
+        self.fails.append('{}: {}'.format(self, err_message))
+
+    def save_skip(self, err_message):
+        self.skips.append('{}: {}'.format(self, err_message))
 
     def log(self, message, level=INFO):
         log.log(level, message)
@@ -44,28 +48,48 @@ class TesterBase(object):
         self.log(message, level)
         self.print_(message)
 
-    def log_ok(self, message):
+    def output_ok(self, message):
         message = str(self) + ': ' + message
         self.log(message + ' OK')
         self.print_(message + '... ' + Colors.green('OK'))
 
-    def log_skip(self, message):
+    def output_skip(self, message):
         message = str(self) + ': ' + message
         self.log(message + ' SKIP', level=DEBUG)
         self.print_(message + '... ' + Colors.yellow('SKIP'))
 
-    def log_fail(self, message):
+    def output_fail(self, message):
         message = str(self) + ': ' + message
         self.log(message + ' FAIL', level=ERROR)
         self.print_(message + '... ' + Colors.red('FAIL'))
 
     def merge_errors(self, tester):
-        self.errors += tester.errors
+        self.fails += tester.fails
 
-    def show_errors(self):
-        self.output(Colors.red('\nErrors:'), level=ERROR)
-        for error in self.errors:
-            self.output(error, level=ERROR)
+    def merge_skips(self, tester):
+        self.skips += tester.skips
+
+    def merge_reports(self, tester):
+        self.merge_errors(tester)
+        self.merge_skips(tester)
+
+    def show_fails(self):
+        if self.fails:
+            self.output(Colors.red('\nFails:'), level=ERROR)
+            for message in self.fails:
+                self.output('-'*50)
+                self.output(message, level=ERROR)
+
+    def show_skips(self):
+        if self.skips:
+            self.output(Colors.yellow('\nSkips:'), level=ERROR)
+            for message in self.skips:
+                self.output('-'*50)
+                self.output(message, level=DEBUG)
+
+    def show_report(self):
+        self.show_fails()
+        self.show_skips()
 
     def test(self):
         raise NotImplementedError
