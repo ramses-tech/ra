@@ -4,9 +4,6 @@ from logging import INFO, ERROR, DEBUG
 import six
 
 
-log = logging.getLogger('ra')
-
-
 class Colors(object):
     GREEN = '\033[92m'
     YELLOW = '\033[93m'
@@ -28,6 +25,7 @@ class Colors(object):
 
 class TesterBase(object):
     def __init__(self, *args, **kwargs):
+        self.logger = logging.getLogger('ra')
         self.fails = []
         self.skips = []
         super(TesterBase, self).__init__(*args, **kwargs)
@@ -39,7 +37,7 @@ class TesterBase(object):
         self.skips.append('{}: {}'.format(self, err_message))
 
     def log(self, message, level=INFO):
-        log.log(level, message)
+        self.logger.log(level, message)
 
     def print_(self, message):
         six.print_(message)
@@ -50,17 +48,17 @@ class TesterBase(object):
 
     def output_ok(self, message):
         message = str(self) + ': ' + message
-        self.log(message + ' OK')
+        self.log(message + '... OK')
         self.print_(message + '... ' + Colors.green('OK'))
 
     def output_skip(self, message):
         message = str(self) + ': ' + message
-        self.log(message + ' SKIP', level=DEBUG)
+        self.log(message + '... SKIP', level=DEBUG)
         self.print_(message + '... ' + Colors.yellow('SKIP'))
 
     def output_fail(self, message):
         message = str(self) + ': ' + message
-        self.log(message + ' FAIL', level=ERROR)
+        self.log(message + '... FAIL', level=ERROR)
         self.print_(message + '... ' + Colors.red('FAIL'))
 
     def merge_errors(self, tester):

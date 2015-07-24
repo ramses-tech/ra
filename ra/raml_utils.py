@@ -10,3 +10,30 @@ def get_schema_by_mediatype(raml_response, mediatype):
     for body in bodies:
         if body.mime_type == mediatype:
             return body.schema
+
+
+def named_params_schema(params):
+    """ Convert RAML "named parameters" to JSON schema params.
+
+    Only params that participate in JSON schema validation
+    are translated.
+
+    Does not support:
+        type: file
+    """
+    schema = {'type': params['type']}
+
+    if schema['type'] == 'date':
+        schema['type'] = 'string'
+        if 'pattern' not in params:
+            schema['format'] = 'date-time'
+
+    situational = (
+        'enum', 'minLength', 'maxLength', 'minimum',
+        'maximum', 'required', 'pattern', 'default')
+
+    for param in situational:
+        if param in params:
+            schema[param] = params[param]
+
+    return schema
