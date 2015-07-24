@@ -3,24 +3,7 @@ from logging import INFO, ERROR, DEBUG
 
 import six
 
-
-class Colors(object):
-    GREEN = '\033[92m'
-    YELLOW = '\033[93m'
-    RED = '\033[91m'
-    END = '\033[0m'
-
-    @classmethod
-    def green(cls, msg):
-        return cls.GREEN + msg + cls.END
-
-    @classmethod
-    def yellow(cls, msg):
-        return cls.YELLOW + msg + cls.END
-
-    @classmethod
-    def red(cls, msg):
-        return cls.RED + msg + cls.END
+from .utils import Colors
 
 
 class TesterBase(object):
@@ -73,14 +56,14 @@ class TesterBase(object):
 
     def show_fails(self):
         if self.fails:
-            self.output(Colors.red('\nFails:'), level=ERROR)
+            self.output(Colors.red('\n\nFails:'), level=ERROR)
             for message in self.fails:
                 self.output('-'*50)
                 self.output(message, level=ERROR)
 
     def show_skips(self):
         if self.skips:
-            self.output(Colors.yellow('\nSkips:'), level=ERROR)
+            self.output(Colors.yellow('\n\nSkips:'), level=ERROR)
             for message in self.skips:
                 self.output('-'*50)
                 self.output(message, level=DEBUG)

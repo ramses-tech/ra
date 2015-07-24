@@ -42,7 +42,7 @@ class RAMLTester(TesterBase):
             if resource.method.lower() != 'get' or '{' in resource.path:
                 continue
 
-            tester = ResourceTester(resource, self.testapp)
+            tester = ResourceTester(resource, testapp=self.testapp)
             tester.test()
             self.merge_reports(tester)
 
@@ -62,12 +62,12 @@ class ResourceTesterBase(TesterBase):
             self.resource.path)
 
 
-class ResourceTester(ResourceTesterBase):
+class ResourceRequestMixin(object):
     _request_func = None
 
-    def __init__(self, resource, testapp):
-        super(ResourceTester, self).__init__(resource)
-        self.testapp = testapp
+    def __init__(self, *args, **kwargs):
+        self.testapp = kwargs.pop('testapp')
+        super(ResourceRequestMixin, self).__init__(*args, **kwargs)
 
     @property
     def request(self, *args, **kwargs):
@@ -81,6 +81,8 @@ class ResourceTester(ResourceTesterBase):
         return self.testapp.get(
             self.resource.absolute_uri, *args, **kwargs)
 
+
+class ResourceTester(ResourceRequestMixin, ResourceTesterBase):
     def test_body(self, response, raml_response):
         tester = ResponseBodyTester(self.resource, raml_response, response)
         tester.test()
@@ -92,17 +94,63 @@ class ResourceTester(ResourceTesterBase):
         tester.test()
         self.merge_reports(tester)
 
+    def test_query_params(self):
+        tester = QueryParamsTester(self.resource, testapp=self.testapp)
+        tester.test()
+        self.merge_reports(tester)
+
     def test(self):
-        response = self.request()
+        step_name = 'Resource request'
+        try:
+            response = self.request()
+        except Exception as ex:
+            self.output_fail(step_name)
+            self.save_fail('{}:\n{}'.format(step_name, str(ex)))
+            return
+
         raml_response = get_response_by_code(
             self.resource, response.status_code)
         if raml_response is None:
-            self.output_skip('Test resource')
-            self.save_skip('Test resource: No response specified for '
-                           'status code {}'.format(response.status_code))
+            self.output_fail('Test resource')
+            self.save_fail(
+                'Test resource:\nNot defined response status '
+                'code: {}'.format(response.status_code))
         else:
             self.test_body(response, raml_response)
             self.test_headers(response, raml_response)
+        self.test_query_params()
+
+
+class QueryParamsTester(ResourceRequestMixin, ResourceTesterBase):
+    def test_response_code(self, qs_params, valid_codes, step_name):
+        step_name = '{} {}'.format(step_name, str(qs_params))
+        try:
+            response = self.request(params=qs_params)
+        except Exception as ex:
+            self.output_fail(step_name)
+            self.save_fail('{}:\n{}'.format(step_name, str(ex)))
+        else:
+            if response.status_code in valid_codes:
+                self.output_ok(step_name)
+            else:
+                self.output_fail(step_name)
+                self.save_fail(
+                    '{}:\nNot defined response status code: {}'.format(
+                        step_name, response.status_code))
+
+    def test(self):
+        step_name = 'Test query params'
+        if not self.resource.query_params:
+            self.output_skip(step_name)
+            self.save_skip(step_name + ': No query params specified')
+            return
+
+        valid_codes = [resp.code for resp in self.resource.responses or []]
+
+        for param in self.resource.query_params:
+            value = None  # TODO: Generate random value of proper type
+            self.test_response_code(
+                {param.name: value}, valid_codes, step_name)
 
 
 class ResponseBodyTester(ResourceTesterBase):
@@ -130,7 +178,7 @@ class ResponseBodyTester(ResourceTesterBase):
             jschema_validate(self.response.json, schema)
         except Exception as ex:
             self.output_fail(step_name)
-            self.save_fail('{}: {}'.format(step_name, str(ex)))
+            self.save_fail('{}:\n{}'.format(step_name, str(ex)))
         else:
             self.output_ok(step_name)
 
@@ -190,7 +238,7 @@ class ResponseHeadersTester(ResourceTesterBase):
                 self.test_header(data, http_headers.get(name))
             except Exception as ex:
                 self.output_fail(step_name)
-                self.save_fail('{}: `{}`: {}'.format(
+                self.save_fail('{}: `{}`:\n{}'.format(
                     step_name, name, str(ex)))
             else:
                 self.output_ok(step_name)
