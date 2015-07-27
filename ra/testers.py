@@ -46,7 +46,8 @@ class RAMLTester(TesterBase):
             # DEBUG
             supported_methods = ['get', 'post']
             method_supported = resource.method.lower() in supported_methods
-            if not method_supported or '{' in resource.path:
+            is_dynamic = '{' in resource.path
+            if not method_supported or is_dynamic:
                 continue
 
             tester = ResourceTester(resource, testapp=self.testapp)
@@ -82,7 +83,7 @@ class ResourceRequestMixin(object):
         if self._request_func is None:
             http_method = self.resource.method.lower()
             self._request_func = getattr(
-                self, '_request_{}'.format(http_method))
+                self, '_{}_request'.format(http_method))
         return self._request_func
 
     @property
@@ -93,12 +94,12 @@ class ResourceRequestMixin(object):
             self._request_body = body.example
         return self._request_body
 
-    def _request_get(self, uri=None, **kwargs):
+    def _get_request(self, uri=None, **kwargs):
         if uri is None:
             uri = self.resource.absolute_uri
         return self.testapp.get(uri, **kwargs)
 
-    def _request_post(self, uri=None, **kwargs):
+    def _post_request(self, uri=None, **kwargs):
         if uri is None:
             uri = self.resource.absolute_uri
         if self.request_body is None:
@@ -125,7 +126,13 @@ class ResourceTester(ResourceRequestMixin, ResourceTesterBase):
         tester.test()
         self.merge_reports(tester)
 
-    def test(self):
+    def _run_common_tests(self):
+        """
+        Tests:
+            * Response body JSON against schema
+            * Response headers
+            * Requests with query string params
+        """
         step_name = 'Resource request'
         try:
             response = self.request()
@@ -144,7 +151,20 @@ class ResourceTester(ResourceRequestMixin, ResourceTesterBase):
         else:
             self.test_body(response, raml_response)
             self.test_headers(response, raml_response)
+
         self.test_query_params()
+        return response
+
+    def _run_get_tests(self):
+        self._run_common_tests()
+
+    def _run_post_tests(self):
+        self._run_common_tests()
+
+    def test(self):
+        func_name = '_run_{}_tests'.format(self.resource.method.lower())
+        test_func = getattr(self, func_name)
+        test_func()
 
 
 class QueryParamsTester(ResourceRequestMixin, ResourceTesterBase):
