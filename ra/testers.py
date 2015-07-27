@@ -5,6 +5,7 @@ from .raml_utils import (
     get_schema_by_mediatype,
     named_params_schema,
 )
+from .utils import RandomValueGenerator
 from .base import TesterBase
 
 
@@ -148,9 +149,14 @@ class QueryParamsTester(ResourceRequestMixin, ResourceTesterBase):
         valid_codes = [resp.code for resp in self.resource.responses or []]
 
         for param in self.resource.query_params:
-            value = None  # TODO: Generate random value of proper type
+            if 'example' in param.raw:
+                value = param.raw['example']
+            else:
+                generator = RandomValueGenerator(param.raw)
+                value = generator()
             self.test_response_code(
-                {param.name: value}, valid_codes, step_name)
+                {param.name: value},
+                valid_codes, step_name)
 
 
 class ResponseBodyTester(ResourceTesterBase):
