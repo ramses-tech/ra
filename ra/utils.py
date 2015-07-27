@@ -26,6 +26,14 @@ class RandomValueGenerator(object):
         self.params = dict(params)
         super(RandomValueGenerator, self).__init__()
 
+    @classmethod
+    def generate_value(cls, param):
+        if 'example' in param.raw:
+            return param.raw['example']
+        else:
+            generator = cls(param.raw)
+            return generator()
+
     def _random_string(self):
         if 'enum' in self.params:
             return random.choice(self.params['enum'])

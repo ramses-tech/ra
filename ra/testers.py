@@ -5,8 +5,11 @@ from .raml_utils import (
     get_response_by_code,
     get_body_by_mediatype,
     named_params_schema,
+    get_query_params,
 )
-from .utils import RandomValueGenerator
+from .utils import (
+    RandomValueGenerator,
+)
 from .base import TesterBase
 
 
@@ -73,6 +76,7 @@ class ResourceTesterBase(TesterBase):
 class ResourceRequestMixin(object):
     _request_func = None
     _request_body = None
+    _required_params = None
 
     def __init__(self, *args, **kwargs):
         self.testapp = kwargs.pop('testapp')
@@ -94,18 +98,45 @@ class ResourceRequestMixin(object):
             self._request_body = body.example
         return self._request_body
 
-    def _get_request(self, uri=None, **kwargs):
-        if uri is None:
-            uri = self.resource.absolute_uri
-        return self.testapp.get(uri, **kwargs)
+    @property
+    def required_params(self):
+        if self._required_params is None:
+            raml_params = get_query_params(
+                self.resource, required_only=True)
+            self._required_params = {
+                param.name: RandomValueGenerator.generate_value(param)
+                for param in raml_params}
+        return self._required_params
 
-    def _post_request(self, uri=None, **kwargs):
-        if uri is None:
-            uri = self.resource.absolute_uri
+    def make_url(self, params=None, add_required=True):
+        if params is None:
+            params = {}
+        if add_required:
+            params.update(self.required_params)
+
+        if params:
+            # http://stackoverflow.com/a/2506477
+            url_parts = list(urllib.parse.urlparse(
+                self.resource.absolute_uri))
+            query = dict(urllib.parse.parse_qsl(url_parts[4]))
+            query.update(params)
+            url_parts[4] = urllib.parse.urlencode(query)
+            return urllib.parse.urlunparse(url_parts)
+
+        return self.resource.absolute_uri
+
+    def _get_request(self, url=None, **kwargs):
+        if url is None:
+            url = self.make_url()
+        return self.testapp.get(url, **kwargs)
+
+    def _post_request(self, url=None, **kwargs):
+        if url is None:
+            url = self.make_url()
         if self.request_body is None:
             raise Exception('Request body example is not specified.')
         return self.testapp.post_json(
-            uri, params=self.request_body,
+            url, params=self.request_body,
             **kwargs)
 
 
@@ -126,7 +157,7 @@ class ResourceTester(ResourceRequestMixin, ResourceTesterBase):
         tester.test()
         self.merge_reports(tester)
 
-    def _run_common_tests(self):
+    def _run_common_tests(self, body=True, headers=True, query_string=True):
         """
         Tests:
             * Response body JSON against schema
@@ -149,10 +180,13 @@ class ResourceTester(ResourceRequestMixin, ResourceTesterBase):
                 'Test resource:\nNot defined response status '
                 'code: {}'.format(response.status_code))
         else:
-            self.test_body(response, raml_response)
-            self.test_headers(response, raml_response)
+            if body:
+                self.test_body(response, raml_response)
+            if headers:
+                self.test_headers(response, raml_response)
 
-        self.test_query_params()
+        if query_string:
+            self.test_query_params()
         return response
 
     def _run_get_tests(self):
@@ -169,11 +203,11 @@ class ResourceTester(ResourceRequestMixin, ResourceTesterBase):
 
 class QueryParamsTester(ResourceRequestMixin, ResourceTesterBase):
     def test_response_code(self, qs_params, valid_codes, step_name):
-        qs_params = urllib.parse.urlencode(qs_params)
-        step_name = '{}: {}'.format(step_name, str(qs_params))
-        uri = self.resource.absolute_uri + '?' + qs_params
+        url = self.make_url(qs_params)
+        step_name = '{}: {}'.format(
+            step_name, urllib.parse.urlsplit(url).query)
         try:
-            response = self.request(uri=uri)
+            response = self.request(url=url)
         except Exception as ex:
             self.output_fail(step_name)
             self.save_fail('{}:\n{}'.format(step_name, str(ex)))
@@ -196,11 +230,11 @@ class QueryParamsTester(ResourceRequestMixin, ResourceTesterBase):
         valid_codes = [resp.code for resp in self.resource.responses or []]
 
         for param in self.resource.query_params:
-            if 'example' in param.raw:
-                value = param.raw['example']
-            else:
-                generator = RandomValueGenerator(param.raw)
-                value = generator()
+            # Skip required query string params because they are already
+            # present in url and were tested by simple request
+            if param.required:
+                continue
+            value = RandomValueGenerator.generate_value(param)
             self.test_response_code(
                 {param.name: value},
                 valid_codes, step_name)
