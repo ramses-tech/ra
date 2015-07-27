@@ -5,11 +5,11 @@ def get_response_by_code(resource, code):
             return resp
 
 
-def get_schema_by_mediatype(raml_response, mediatype):
-    bodies = raml_response.body or []
+def get_body_by_mediatype(raml_obj, mediatype):
+    bodies = raml_obj.body or []
     for body in bodies:
         if body.mime_type == mediatype:
-            return body.schema
+            return body
 
 
 def named_params_schema(params):
@@ -28,11 +28,10 @@ def named_params_schema(params):
         if 'pattern' not in params:
             schema['format'] = 'date-time'
 
-    situational = (
-        'enum', 'minLength', 'maxLength', 'minimum',
-        'maximum', 'required', 'pattern', 'default')
+    optional = ('enum', 'minLength', 'maxLength', 'minimum',
+                'maximum', 'required', 'pattern', 'default')
 
-    for param in situational:
+    for param in optional:
         if param in params:
             schema[param] = params[param]
 

@@ -1,12 +1,16 @@
 from jsonschema import validate as jschema_validate
+from six.moves import urllib
 
 from .raml_utils import (
     get_response_by_code,
-    get_schema_by_mediatype,
+    get_body_by_mediatype,
     named_params_schema,
 )
 from .utils import RandomValueGenerator
 from .base import TesterBase
+
+
+DEFAULT_MEDIA_TYPE = 'application/json'
 
 
 class RAMLTester(TesterBase):
@@ -40,7 +44,9 @@ class RAMLTester(TesterBase):
         for resource in self.raml_root.resources:
 
             # DEBUG
-            if resource.method.lower() != 'get' or '{' in resource.path:
+            supported_methods = ['get', 'post']
+            method_supported = resource.method.lower() in supported_methods
+            if not method_supported or '{' in resource.path:
                 continue
 
             tester = ResourceTester(resource, testapp=self.testapp)
@@ -65,6 +71,7 @@ class ResourceTesterBase(TesterBase):
 
 class ResourceRequestMixin(object):
     _request_func = None
+    _request_body = None
 
     def __init__(self, *args, **kwargs):
         self.testapp = kwargs.pop('testapp')
@@ -78,9 +85,27 @@ class ResourceRequestMixin(object):
                 self, '_request_{}'.format(http_method))
         return self._request_func
 
-    def _request_get(self, *args, **kwargs):
-        return self.testapp.get(
-            self.resource.absolute_uri, *args, **kwargs)
+    @property
+    def request_body(self, *args, **kwargs):
+        if self._request_body is None:
+            media_type = DEFAULT_MEDIA_TYPE
+            body = get_body_by_mediatype(self.resource, media_type)
+            self._request_body = body.example
+        return self._request_body
+
+    def _request_get(self, uri=None, **kwargs):
+        if uri is None:
+            uri = self.resource.absolute_uri
+        return self.testapp.get(uri, **kwargs)
+
+    def _request_post(self, uri=None, **kwargs):
+        if uri is None:
+            uri = self.resource.absolute_uri
+        if self.request_body is None:
+            raise Exception('Request body example is not specified.')
+        return self.testapp.post_json(
+            uri, params=self.request_body,
+            **kwargs)
 
 
 class ResourceTester(ResourceRequestMixin, ResourceTesterBase):
@@ -124,9 +149,11 @@ class ResourceTester(ResourceRequestMixin, ResourceTesterBase):
 
 class QueryParamsTester(ResourceRequestMixin, ResourceTesterBase):
     def test_response_code(self, qs_params, valid_codes, step_name):
-        step_name = '{} {}'.format(step_name, str(qs_params))
+        qs_params = urllib.parse.urlencode(qs_params)
+        step_name = '{}: {}'.format(step_name, str(qs_params))
+        uri = self.resource.absolute_uri + '?' + qs_params
         try:
-            response = self.request(params=qs_params)
+            response = self.request(uri=uri)
         except Exception as ex:
             self.output_fail(step_name)
             self.save_fail('{}:\n{}'.format(step_name, str(ex)))
@@ -170,8 +197,9 @@ class ResponseBodyTester(ResourceTesterBase):
 
     def test_schema(self):
         step_name = 'Test response body schema'
-        media_type = 'application/json'
-        schema = get_schema_by_mediatype(self.raml_response, media_type)
+        media_type = DEFAULT_MEDIA_TYPE
+        body = get_body_by_mediatype(self.raml_response, media_type)
+        schema = None if body is None else body.schema
         if schema is None:
             self.output_skip(step_name)
             self.save_skip(

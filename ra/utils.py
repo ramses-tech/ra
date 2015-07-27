@@ -54,6 +54,12 @@ class RandomValueGenerator(object):
     def _random_boolean(self):
         return random.choice([True, False])
 
+    def _random_array(self):
+        return [self._random_string()]
+
+    def _random_object(self):
+        return {self._random_string(): self._random_string()}
+
     def __call__(self):
         type_ = self.params.get('type', 'string')
         func = getattr(self, '_random_{}'.format(type_))
