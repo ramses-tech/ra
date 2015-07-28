@@ -342,11 +342,15 @@ class ResponseHeadersTester(ResourceTesterBase):
             raise Exception('Header value is not of type `{}`'.format(
                 prop_schema['type']))
 
+        required = prop_schema.pop('required', False)
         json_schema = {
             'id': 'headerValidationSchema',
-            '$schema': 'http://json-schema.org/draft-03/schema',
+            '$schema': 'http://json-schema.org/draft-04/schema',
             'type': 'object',
-            'properties': {'header': prop_schema}
+            'properties': {
+                'header': prop_schema
+            },
+            'required': ['header'] if required else []
         }
         header = {} if header_val is None else {'header': header_val}
         jschema_validate(header, json_schema)
