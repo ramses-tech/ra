@@ -47,7 +47,9 @@ class RAMLTester(TesterBase):
         for resource in self.raml_root.resources:
 
             # DEBUG
-            supported_methods = ['get', 'post', 'patch', 'put']
+            supported_methods = [
+                'get', 'post', 'patch', 'put', 'head', 'options',
+            ]
             method_supported = resource.method.lower() in supported_methods
             is_dynamic = '{' in resource.path
             if not method_supported or is_dynamic:
@@ -130,6 +132,16 @@ class ResourceRequestMixin(object):
             url = self.make_url()
         return self.testapp.get(url, **kwargs)
 
+    def _head_request(self, url=None, **kwargs):
+        if url is None:
+            url = self.make_url()
+        return self.testapp.head(url, **kwargs)
+
+    def _options_request(self, url=None, **kwargs):
+        if url is None:
+            url = self.make_url()
+        return self.testapp.options(url, **kwargs)
+
     def _create_update_request(self, url, method, **kwargs):
         if url is None:
             url = self.make_url()
@@ -199,6 +211,12 @@ class ResourceTester(ResourceRequestMixin, ResourceTesterBase):
 
     def _run_get_tests(self):
         self._run_common_tests()
+
+    def _run_head_tests(self):
+        self._run_common_tests(body=False)
+
+    def _run_options_tests(self):
+        self._run_common_tests(body=False)
 
     def _run_post_tests(self):
         self._run_common_tests()
@@ -336,11 +354,12 @@ class ResponseHeadersTester(ResourceTesterBase):
 
         http_headers = dict(self.response.headers)
         for name, data in raml_headers.items():
+            local_step = step_name + ': ' + name
             try:
                 self.test_header(data, http_headers.get(name))
             except Exception as ex:
-                self.output_fail(step_name)
+                self.output_fail(local_step)
                 self.save_fail('{}: `{}`:\n{}'.format(
-                    step_name, name, str(ex)))
+                    local_step, name, str(ex)))
             else:
-                self.output_ok(step_name)
+                self.output_ok(local_step)
