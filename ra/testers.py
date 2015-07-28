@@ -47,16 +47,18 @@ class RAMLTester(TesterBase):
         for resource in self.raml_root.resources:
 
             # DEBUG
-            supported_methods = [
-                'get', 'post', 'patch', 'put', 'head', 'options',
-                'delete'
-            ]
-            method_supported = resource.method.lower() in supported_methods
+            # supported_methods = [
+            #     'get', 'post', 'patch', 'put', 'head', 'options',
+            #     'delete'
+            # ]
+            # method_supported = resource.method.lower() in supported_methods
             is_dynamic = '{' in resource.path
-            if not method_supported or is_dynamic:
-                continue
-
-            tester = ResourceTester(resource, testapp=self.testapp)
+            # if not method_supported or is_dynamic:
+            #     continue
+            klass = DynamicResourceTester if is_dynamic else ResourceTester
+            if is_dynamic:
+                import ipdb; ipdb.set_trace()
+            tester = klass(resource, testapp=self.testapp)
             tester.test()
             self.merge_reports(tester)
 
@@ -86,6 +88,10 @@ class ResourceRequestMixin(object):
         super(ResourceRequestMixin, self).__init__(*args, **kwargs)
 
     @property
+    def base_url(self):
+        return self.resource.absolute_uri
+
+    @property
     def request(self, *args, **kwargs):
         if self._request_func is None:
             http_method = self.resource.method.lower()
@@ -111,7 +117,9 @@ class ResourceRequestMixin(object):
                 for param in raml_params}
         return self._required_params
 
-    def make_url(self, params=None, add_required=True):
+    def make_url(self, params=None, base_url=None, add_required=True):
+        if base_url is None:
+            base_url = self.base_url
         if params is None:
             params = {}
         if add_required:
@@ -119,14 +127,13 @@ class ResourceRequestMixin(object):
 
         if params:
             # http://stackoverflow.com/a/2506477
-            url_parts = list(urllib.parse.urlparse(
-                self.resource.absolute_uri))
+            url_parts = list(urllib.parse.urlparse(base_url))
             query = dict(urllib.parse.parse_qsl(url_parts[4]))
             query.update(params)
             url_parts[4] = urllib.parse.urlencode(query)
             return urllib.parse.urlunparse(url_parts)
 
-        return self.resource.absolute_uri
+        return base_url
 
     def _get_request(self, url=None, **kwargs):
         if url is None:
@@ -241,6 +248,18 @@ class ResourceTester(ResourceRequestMixin, ResourceTesterBase):
         func_name = '_run_{}_tests'.format(self.resource.method.lower())
         test_func = getattr(self, func_name)
         test_func()
+
+
+class DynamicResourceTester(ResourceTester):
+    _base_url = None
+
+    @property
+    def base_url(self):
+        if self._base_url is None:
+            pass
+
+        return self._base_url
+
 
 
 class QueryParamsTester(ResourceRequestMixin, ResourceTesterBase):
