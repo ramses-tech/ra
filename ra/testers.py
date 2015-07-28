@@ -47,7 +47,7 @@ class RAMLTester(TesterBase):
         for resource in self.raml_root.resources:
 
             # DEBUG
-            supported_methods = ['get', 'post']
+            supported_methods = ['get', 'post', 'patch', 'put']
             method_supported = resource.method.lower() in supported_methods
             is_dynamic = '{' in resource.path
             if not method_supported or is_dynamic:
@@ -95,7 +95,7 @@ class ResourceRequestMixin(object):
         if self._request_body is None:
             media_type = DEFAULT_MEDIA_TYPE
             body = get_body_by_mediatype(self.resource, media_type)
-            self._request_body = body.example
+            self._request_body = None if body is None else body.example
         return self._request_body
 
     @property
@@ -130,14 +130,22 @@ class ResourceRequestMixin(object):
             url = self.make_url()
         return self.testapp.get(url, **kwargs)
 
-    def _post_request(self, url=None, **kwargs):
+    def _create_update_request(self, url, method, **kwargs):
         if url is None:
             url = self.make_url()
         if self.request_body is None:
             raise Exception('Request body example is not specified.')
-        return self.testapp.post_json(
-            url, params=self.request_body,
-            **kwargs)
+        meth = getattr(self.testapp, '{}_json'.format(method))
+        return meth(url, params=self.request_body, **kwargs)
+
+    def _post_request(self, url=None, **kwargs):
+        return self._create_update_request(url, 'post', **kwargs)
+
+    def _patch_request(self, url=None, **kwargs):
+        return self._create_update_request(url, 'patch', **kwargs)
+
+    def _put_request(self, url=None, **kwargs):
+        return self._create_update_request(url, 'put', **kwargs)
 
 
 class ResourceTester(ResourceRequestMixin, ResourceTesterBase):
@@ -193,6 +201,12 @@ class ResourceTester(ResourceRequestMixin, ResourceTesterBase):
         self._run_common_tests()
 
     def _run_post_tests(self):
+        self._run_common_tests()
+
+    def _run_patch_tests(self):
+        self._run_common_tests()
+
+    def _run_put_tests(self):
         self._run_common_tests()
 
     def test(self):
