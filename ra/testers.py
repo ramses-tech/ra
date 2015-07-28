@@ -49,6 +49,7 @@ class RAMLTester(TesterBase):
             # DEBUG
             supported_methods = [
                 'get', 'post', 'patch', 'put', 'head', 'options',
+                'delete'
             ]
             method_supported = resource.method.lower() in supported_methods
             is_dynamic = '{' in resource.path
@@ -159,6 +160,12 @@ class ResourceRequestMixin(object):
     def _put_request(self, url=None, **kwargs):
         return self._create_update_request(url, 'put', **kwargs)
 
+    def _delete_request(self, url=None, **kwargs):
+        if url is None:
+            url = self.make_url()
+        params = self.request_body or {}
+        return self.testapp.delete_json(url, params=params, **kwargs)
+
 
 class ResourceTester(ResourceRequestMixin, ResourceTesterBase):
     def test_body(self, response, raml_response):
@@ -225,6 +232,9 @@ class ResourceTester(ResourceRequestMixin, ResourceTesterBase):
         self._run_common_tests()
 
     def _run_put_tests(self):
+        self._run_common_tests()
+
+    def _run_delete_tests(self):
         self._run_common_tests()
 
     def test(self):
