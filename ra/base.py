@@ -71,6 +71,9 @@ class TesterBase(object):
     def show_report(self):
         self.show_fails()
         self.show_skips()
+        if self.fails:
+            raise Exception('{} tests have failed'.format(
+                len(self.fails)))
 
     def test(self):
         raise NotImplementedError

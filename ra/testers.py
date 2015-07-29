@@ -50,13 +50,11 @@ class RAMLTester(TesterBase):
     def test_resources(self):
         self.output('\nTesting resources:')
         for resource in self.raml_root.resources:
-
-            # DEBUG
-            if resource.path.startswith('/users'):
-                continue
-
-            is_dynamic = '{' in resource.path
-            klass = DynamicResourceTester if is_dynamic else ResourceTester
+            has_dynamic_part = '{' in resource.path
+            if has_dynamic_part:
+                klass = DynamicResourceTester
+            else:
+                klass = ResourceTester
             tester = klass(resource=resource, testapp=self.testapp)
             tester.test()
             self.merge_reports(tester)
