@@ -72,3 +72,17 @@ class RandomValueGenerator(object):
         type_ = self.params.get('type', 'string')
         func = getattr(self, '_random_{}'.format(type_))
         return func()
+
+
+def get_uri_param_name(url):
+    part = url.strip('/').split('{')[-1]
+    part = part.split('}')[0]
+    return part.strip()
+
+
+def get_part_by_schema(url, schema):
+    schema_parts = schema.split('/')
+    url_parts = url.split('/')
+    for index, part in enumerate(schema_parts):
+        if part.startswith('{') and part.endswith('}'):
+            return url_parts[index]

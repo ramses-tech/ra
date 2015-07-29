@@ -6,9 +6,13 @@ from .raml_utils import (
     get_body_by_mediatype,
     named_params_schema,
     get_query_params,
+    get_uri_param,
+    get_static_parent,
 )
 from .utils import (
     RandomValueGenerator,
+    get_uri_param_name,
+    get_part_by_schema,
 )
 from .base import TesterBase
 
@@ -45,20 +49,9 @@ class RAMLTester(TesterBase):
     def test_resources(self):
         self.output('\nTesting resources:')
         for resource in self.raml_root.resources:
-
-            # DEBUG
-            # supported_methods = [
-            #     'get', 'post', 'patch', 'put', 'head', 'options',
-            #     'delete'
-            # ]
-            # method_supported = resource.method.lower() in supported_methods
             is_dynamic = '{' in resource.path
-            # if not method_supported or is_dynamic:
-            #     continue
             klass = DynamicResourceTester if is_dynamic else ResourceTester
-            if is_dynamic:
-                import ipdb; ipdb.set_trace()
-            tester = klass(resource, testapp=self.testapp)
+            tester = klass(resource=resource, testapp=self.testapp)
             tester.test()
             self.merge_reports(tester)
 
@@ -68,9 +61,9 @@ class RAMLTester(TesterBase):
 
 
 class ResourceTesterBase(TesterBase):
-    def __init__(self, resource):
+    def __init__(self, *args, **kwargs):
         super(ResourceTesterBase, self).__init__()
-        self.resource = resource
+        self.resource = kwargs.pop('resource')
 
     def __repr__(self):
         return 'Resource({}, {})'.format(
@@ -176,18 +169,25 @@ class ResourceRequestMixin(object):
 
 class ResourceTester(ResourceRequestMixin, ResourceTesterBase):
     def test_body(self, response, raml_response):
-        tester = ResponseBodyTester(self.resource, raml_response, response)
+        tester = ResponseBodyTester(
+            resource=self.resource, raml_response=raml_response,
+            response=response)
         tester.test()
         self.merge_reports(tester)
 
     def test_headers(self, response, raml_response):
         tester = ResponseHeadersTester(
-            self.resource, raml_response, response)
+            resource=self.resource,
+            raml_response=raml_response,
+            response=response)
         tester.test()
         self.merge_reports(tester)
 
     def test_query_params(self):
-        tester = QueryParamsTester(self.resource, testapp=self.testapp)
+        tester = QueryParamsTester(
+            resource=self.resource,
+            testapp=self.testapp,
+            parent_tester=self)
         tester.test()
         self.merge_reports(tester)
 
@@ -256,19 +256,51 @@ class DynamicResourceTester(ResourceTester):
     @property
     def base_url(self):
         if self._base_url is None:
-            pass
-
+            param_name = get_uri_param_name(self.resource.absolute_uri)
+            part = self._get_part_from_params(param_name)
+            if part is None:
+                part = self._get_part_from_post()
+            self._base_url = self.resource.absolute_uri.format(
+                **{param_name: part})
         return self._base_url
 
+    def _get_part_from_params(self, param_name):
+        uri_param = get_uri_param(self.resource, param_name)
+        if uri_param is not None and 'example' in uri_param.raw:
+            return uri_param.raw['example']
+
+    def _get_part_from_post(self):
+        static_parent = get_static_parent(self.resource, method='POST')
+        if static_parent is None:
+            raise Exception('No parent POST resource is defined. Not '
+                            'possible to get dynamic url.')
+
+        tester = ResourceTester(
+            resource=static_parent, testapp=self.testapp)
+        response = tester.request()
+        try:
+            url = response.headers['Location']
+        except KeyError:
+            raise Exception('`Location` header not returned in response. '
+                            'Not possible to get dynamic url.')
+        return get_part_by_schema(url, self.resource.absolute_uri)
+
+    def __init__(self, *args, **kwargs):
+        super(DynamicResourceTester, self).__init__(*args, **kwargs)
+        self.base_url
 
 
 class QueryParamsTester(ResourceRequestMixin, ResourceTesterBase):
+    def __init__(self, *args, **kwargs):
+        self.parent_tester = kwargs.pop('parent_tester')
+        super(QueryParamsTester, self).__init__(self, *args, **kwargs)
+
     def test_response_code(self, qs_params, valid_codes, step_name):
-        url = self.make_url(qs_params)
+        url = self.parent_tester.make_url(qs_params)
         step_name = '{}: {}'.format(
             step_name, urllib.parse.urlsplit(url).query)
         try:
-            response = self.request(url=url)
+            response = self.parent_tester.request(url=url)
         except Exception as ex:
             self.output_fail(step_name)
             self.save_fail('{}:\n{}'.format(step_name, str(ex)))
@@ -302,10 +334,10 @@ class QueryParamsTester(ResourceRequestMixin, ResourceTesterBase):
 
 
 class ResponseBodyTester(ResourceTesterBase):
-    def __init__(self, resource, raml_response, response):
-        super(ResponseBodyTester, self).__init__(resource)
-        self.raml_response = raml_response
-        self.response = response
+    def __init__(self, *args, **kwargs):
+        self.raml_response = kwargs.pop('raml_response')
+        self.response = kwargs.pop('response')
+        super(ResponseBodyTester, self).__init__(*args, **kwargs)
 
     def test(self):
         self.test_schema()
@@ -333,10 +365,10 @@ class ResponseBodyTester(ResourceTesterBase):
 
 
 class ResponseHeadersTester(ResourceTesterBase):
-    def __init__(self, resource, raml_response, response):
-        super(ResponseHeadersTester, self).__init__(resource)
-        self.raml_response = raml_response
-        self.response = response
+    def __init__(self, *args, **kwargs):
+        self.raml_response = kwargs.pop('raml_response')
+        self.response = kwargs.pop('response')
+        super(ResponseHeadersTester, self).__init__(*args, **kwargs)
 
     def _convert_type(self, type_, value):
         booleans = {'true': True, 'false': False}
