@@ -86,3 +86,18 @@ def get_part_by_schema(url, schema):
     for index, part in enumerate(schema_parts):
         if part.startswith('{') and part.endswith('}'):
             return url_parts[index]
+
+
+def retry(func, args=None, kwargs=None, tries=3, delay=0.5):
+    import time
+    if args is None:
+        args = []
+    if kwargs is None:
+        kwargs = {}
+
+    for i in range(tries):
+        try:
+            return func(*args, **kwargs)
+        except Exception as ex:
+            time.sleep(delay)
+    raise ex

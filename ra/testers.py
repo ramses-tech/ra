@@ -13,6 +13,7 @@ from .utils import (
     RandomValueGenerator,
     get_uri_param_name,
     get_part_by_schema,
+    retry,
 )
 from .base import TesterBase
 
@@ -49,6 +50,11 @@ class RAMLTester(TesterBase):
     def test_resources(self):
         self.output('\nTesting resources:')
         for resource in self.raml_root.resources:
+
+            # DEBUG
+            if resource.path.startswith('/users'):
+                continue
+
             is_dynamic = '{' in resource.path
             klass = DynamicResourceTester if is_dynamic else ResourceTester
             tester = klass(resource=resource, testapp=self.testapp)
@@ -131,17 +137,17 @@ class ResourceRequestMixin(object):
     def _get_request(self, url=None, **kwargs):
         if url is None:
             url = self.make_url()
-        return self.testapp.get(url, **kwargs)
+        return retry(self.testapp.get, args=(url,), kwargs=kwargs)
 
     def _head_request(self, url=None, **kwargs):
         if url is None:
             url = self.make_url()
-        return self.testapp.head(url, **kwargs)
+        return retry(self.testapp.head, args=(url,), kwargs=kwargs)
 
     def _options_request(self, url=None, **kwargs):
         if url is None:
             url = self.make_url()
-        return self.testapp.options(url, **kwargs)
+        return retry(self.testapp.options, args=(url,), kwargs=kwargs)
 
     def _create_update_request(self, url, method, **kwargs):
         if url is None:
@@ -149,7 +155,8 @@ class ResourceRequestMixin(object):
         if self.request_body is None:
             raise Exception('Request body example is not specified.')
         meth = getattr(self.testapp, '{}_json'.format(method))
-        return meth(url, params=self.request_body, **kwargs)
+        kwargs['params'] = self.request_body
+        return retry(meth, args=(url,), kwargs=kwargs)
 
     def _post_request(self, url=None, **kwargs):
         return self._create_update_request(url, 'post', **kwargs)
@@ -164,7 +171,8 @@ class ResourceRequestMixin(object):
         if url is None:
             url = self.make_url()
         params = self.request_body or {}
-        return self.testapp.delete_json(url, params=params, **kwargs)
+        kwargs['params'] = params
+        return retry(self.testapp.delete_json, args=(url,), kwargs=kwargs)
 
 
 class ResourceTester(ResourceRequestMixin, ResourceTesterBase):
@@ -260,8 +268,10 @@ class DynamicResourceTester(ResourceTester):
             part = self._get_part_from_params(param_name)
             if part is None:
                 part = self._get_part_from_post()
-            self._base_url = self.resource.absolute_uri.format(
-                **{param_name: part})
+            url = self.resource.absolute_uri.format(**{param_name: part})
+            if self.resource.method.upper() == 'DELETE':
+                return url
+            self._base_url = url
         return self._base_url
 
     def _get_part_from_params(self, param_name):
@@ -284,10 +294,6 @@ class DynamicResourceTester(ResourceTester):
             raise Exception('`Location` header not returned in response. '
                             'Not possible to get dynamic url.')
         return get_part_by_schema(url, self.resource.absolute_uri)
-
-    def __init__(self, *args, **kwargs):
-        super(DynamicResourceTester, self).__init__(*args, **kwargs)
-        self.base_url
 
 
 class QueryParamsTester(ResourceRequestMixin, ResourceTesterBase):
