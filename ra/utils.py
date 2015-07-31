@@ -27,18 +27,18 @@ class RandomValueGenerator(object):
         super(RandomValueGenerator, self).__init__()
 
     @classmethod
-    def generate_value(cls, param):
-        if 'example' in param.raw:
-            return param.raw['example']
+    def generate_value(cls, params):
+        if 'example' in params:
+            return params['example']
         else:
-            generator = cls(param.raw)
+            generator = cls(params)
             return generator()
 
     def _random_string(self):
         if 'enum' in self.params:
             return random.choice(self.params['enum'])
-        min_length = self.params.get('minLength', 1)
-        max_length = self.params.get('maxLength', 15)
+        min_length = self.params.get('minLength', 5)
+        max_length = self.params.get('maxLength', 20)
         value_len = random.randint(min_length, max_length)
         letters = [random.choice(ascii_letters)
                    for i in range(value_len)]
@@ -101,3 +101,39 @@ def retry(func, args=None, kwargs=None, tries=3, delay=0.5):
         except Exception as ex:
             time.sleep(delay)
     raise ex
+
+
+def fill_required_params(data, json_schema):
+    data = data.copy()
+    properties = json_schema.get('properties', {})
+    required = {prop_: params_ for prop_, params_ in properties.items()
+                if params_.get('required', False)}
+    for prop, params in required.items():
+        if prop not in data:
+            data[prop] = RandomValueGenerator.generate_value(params)
+    return data
+
+
+def sort_by_prioroty(resources):
+    from collections import defaultdict
+    priorities = {
+        'post': 1,
+        'get': 2,
+        'head': 3,
+        'options': 4,
+        'patch': 5,
+        'put': 6,
+        'delete': 7,
+    }
+    grouped = defaultdict(list)
+    for res in resources:
+        grouped[res.path].append(res)
+    for path, res_list in grouped.items():
+        grouped[path] = sorted(
+            res_list, key=lambda x: priorities[x.method.lower()])
+
+    listed = []
+    for res in resources:
+        if res.path in grouped:
+            listed += grouped.pop(res.path)
+    return listed

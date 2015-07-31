@@ -14,6 +14,8 @@ from .utils import (
     get_uri_param_name,
     get_part_by_schema,
     retry,
+    fill_required_params,
+    sort_by_prioroty,
 )
 from .base import TesterBase
 
@@ -29,6 +31,7 @@ class RAMLTester(TesterBase):
         super(RAMLTester, self).__init__()
         self.wsgi_app = wsgi_app
         self.raml_path = raml_path
+        self.created_objects = {}
 
     def __repr__(self):
         return str(self.raml_root)
@@ -49,13 +52,16 @@ class RAMLTester(TesterBase):
 
     def test_resources(self):
         self.output('\nTesting resources:')
-        for resource in self.raml_root.resources:
+        resources = sort_by_prioroty(self.raml_root.resources)
+        for resource in resources:
             has_dynamic_part = '{' in resource.path
             if has_dynamic_part:
-                klass = DynamicResourceTester
+                tester = DynamicResourceTester(
+                    resource=resource, testapp=self.testapp,
+                    root=self)
             else:
-                klass = ResourceTester
-            tester = klass(resource=resource, testapp=self.testapp)
+                tester = ResourceTester(
+                    resource=resource, testapp=self.testapp)
             tester.test()
             self.merge_reports(tester)
 
@@ -78,6 +84,7 @@ class ResourceTesterBase(TesterBase):
 class ResourceRequestMixin(object):
     _request_func = None
     _request_body = None
+    _request_schema = None
     _required_params = None
 
     def __init__(self, *args, **kwargs):
@@ -105,12 +112,21 @@ class ResourceRequestMixin(object):
         return self._request_body
 
     @property
+    def request_schema(self, *args, **kwargs):
+        if self._request_schema is None:
+            media_type = DEFAULT_MEDIA_TYPE
+            body = get_body_by_mediatype(self.resource, media_type)
+            self._request_schema = None if body is None else body.schema
+        return self._request_schema
+
+    @property
     def required_params(self):
         if self._required_params is None:
             raml_params = get_query_params(
                 self.resource, required_only=True)
             self._required_params = {
-                param.name: RandomValueGenerator.generate_value(param)
+                param.name: RandomValueGenerator.generate_value(
+                    param.raw)
                 for param in raml_params}
         return self._required_params
 
@@ -150,10 +166,16 @@ class ResourceRequestMixin(object):
     def _create_update_request(self, url, method, **kwargs):
         if url is None:
             url = self.make_url()
-        if self.request_body is None:
-            raise Exception('Request body example is not specified.')
+        request_body = self.request_body or {}
+
+        # Fill request body example with required fields from request
+        # body schema.
+        if self.request_schema is not None:
+            request_body = fill_required_params(
+                request_body, self.request_schema)
+
         meth = getattr(self.testapp, '{}_json'.format(method))
-        kwargs['params'] = self.request_body
+        kwargs['params'] = request_body
         return retry(meth, args=(url,), kwargs=kwargs)
 
     def _post_request(self, url=None, **kwargs):
@@ -166,11 +188,7 @@ class ResourceRequestMixin(object):
         return self._create_update_request(url, 'put', **kwargs)
 
     def _delete_request(self, url=None, **kwargs):
-        if url is None:
-            url = self.make_url()
-        params = self.request_body or {}
-        kwargs['params'] = params
-        return retry(self.testapp.delete_json, args=(url,), kwargs=kwargs)
+        return self._create_update_request(url, 'delete', **kwargs)
 
 
 class ResourceTester(ResourceRequestMixin, ResourceTesterBase):
@@ -259,18 +277,29 @@ class ResourceTester(ResourceRequestMixin, ResourceTesterBase):
 class DynamicResourceTester(ResourceTester):
     _base_url = None
 
+    def __init__(self, *args, **kwargs):
+        self.root = kwargs.pop('root')
+        super(DynamicResourceTester, self).__init__(*args, **kwargs)
+
     @property
     def base_url(self):
         if self._base_url is None:
-            param_name = get_uri_param_name(self.resource.absolute_uri)
-            part = self._get_part_from_params(param_name)
-            if part is None:
-                part = self._get_part_from_post()
-            url = self.resource.absolute_uri.format(**{param_name: part})
+            try:
+                url = self.root.created_objects[self.resource.path]
+            except KeyError:
+                url = self._generate_base_url()
             if self.resource.method.upper() == 'DELETE':
                 return url
             self._base_url = url
+            self.root.created_objects[self.resource.path] = url
         return self._base_url
+
+    def _generate_base_url(self):
+        param_name = get_uri_param_name(self.resource.absolute_uri)
+        part = self._get_part_from_params(param_name)
+        if part is None:
+            part = self._get_part_from_post()
+        return self.resource.absolute_uri.format(**{param_name: part})
 
     def _get_part_from_params(self, param_name):
         uri_param = get_uri_param(self.resource, param_name)
@@ -292,6 +321,11 @@ class DynamicResourceTester(ResourceTester):
             raise Exception('`Location` header not returned in response. '
                             'Not possible to get dynamic url.')
         return get_part_by_schema(url, self.resource.absolute_uri)
+
+    def _delete_request(self, url=None, **kwargs):
+        response = self._create_update_request(url, 'delete', **kwargs)
+        self.root.created_objects.pop(self.resource.path, None)
+        return response
 
 
 class QueryParamsTester(ResourceRequestMixin, ResourceTesterBase):
@@ -331,7 +365,7 @@ class QueryParamsTester(ResourceRequestMixin, ResourceTesterBase):
             # present in url and were tested by simple request
             if param.required:
                 continue
-            value = RandomValueGenerator.generate_value(param)
+            value = RandomValueGenerator.generate_value(param.raw)
             self.test_response_code(
                 {param.name: value},
                 valid_codes, step_name)
