@@ -6,6 +6,9 @@ import six
 from .utils import Colors
 
 
+DEFAULT_MEDIA_TYPE = 'application/json'
+
+
 class TesterBase(object):
     def __init__(self, *args, **kwargs):
         self.logger = logging.getLogger('ra')
@@ -77,3 +80,14 @@ class TesterBase(object):
 
     def test(self):
         raise NotImplementedError
+
+
+class ResourceTesterBase(TesterBase):
+    def __init__(self, *args, **kwargs):
+        super(ResourceTesterBase, self).__init__()
+        self.resource = kwargs.pop('resource')
+
+    def __repr__(self):
+        return 'Resource({}, {})'.format(
+            self.resource.method,
+            self.resource.path)
