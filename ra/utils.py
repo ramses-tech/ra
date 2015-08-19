@@ -105,11 +105,11 @@ def retry(func, args=None, kwargs=None, tries=3, delay=0.5):
 
 def fill_required_params(data, json_schema):
     data = data.copy()
+    required_props = json_schema.get('required', [])
     properties = json_schema.get('properties', {})
-    required = {prop_: params_ for prop_, params_ in properties.items()
-                if params_.get('required', False)}
-    for prop, params in required.items():
+    for prop in required_props:
         if prop not in data:
+            params = properties.get(prop, {})
             data[prop] = RandomValueGenerator.generate_value(params)
     return data
 
