@@ -114,7 +114,7 @@ def fill_required_params(data, json_schema):
     return data
 
 
-def sort_by_prioroty(resources):
+def sort_by_priority(resources):
     from collections import defaultdict
     priorities = {
         'post': 1,

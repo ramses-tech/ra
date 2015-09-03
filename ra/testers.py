@@ -12,7 +12,7 @@ from .utils import (
     RandomValueGenerator,
     get_uri_param_name,
     get_part_by_schema,
-    sort_by_prioroty,
+    sort_by_priority,
 )
 from .base import TesterBase, DEFAULT_MEDIA_TYPE, ResourceTesterBase
 from .mixins import ResourceRequestMixin
@@ -47,7 +47,7 @@ class RAMLTester(TesterBase):
 
     def test_resources(self):
         self.output('\nTesting resources:')
-        resources = sort_by_prioroty(self.raml_root.resources)
+        resources = sort_by_priority(self.raml_root.resources)
         for resource in resources:
             has_dynamic_part = '{' in resource.path
             if has_dynamic_part:
