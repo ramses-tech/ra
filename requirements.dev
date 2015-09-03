@@ -2,6 +2,6 @@ sphinx
 releases
 pytest
 pytest-cov
-mock
+pytest-mock
 
 -e .
