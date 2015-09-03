@@ -2,6 +2,8 @@ import random
 from string import ascii_letters
 
 
+# TODO: remove when TestRunners are removed
+# just rely on external framework like pytest
 class Colors(object):
     GREEN = '\033[92m'
     YELLOW = '\033[93m'
@@ -21,6 +23,8 @@ class Colors(object):
         return cls.RED + msg + cls.END
 
 
+# TODO: remove
+# should just use faker
 class RandomValueGenerator(object):
     def __init__(self, params):
         self.params = dict(params)
@@ -75,11 +79,16 @@ class RandomValueGenerator(object):
 
 
 def get_uri_param_name(url):
+    "Get the name of the last URI template parameter"
     part = url.strip('/').split('{')[-1]
     part = part.split('}')[0]
     return part.strip()
 
 
+# Used by DynamicResourceTester to generate its base url
+# by making a POST to the parent resource and checking the
+# Location header (url arg) against the resource's uri as
+# specified in the RAML (schema arg)
 def get_part_by_schema(url, schema):
     schema_parts = schema.split('/')
     url_parts = url.split('/')
@@ -88,6 +97,7 @@ def get_part_by_schema(url, schema):
             return url_parts[index]
 
 
+# Used by ResourceRequestMixin to try requests multiple times
 def retry(func, args=None, kwargs=None, tries=3, delay=0.5):
     import time
     if args is None:
@@ -103,6 +113,9 @@ def retry(func, args=None, kwargs=None, tries=3, delay=0.5):
     raise ex
 
 
+# TODO: replace RandomValueGenerator with faker
+# Used by ResourceRequestMixin to fill required fields using
+# RandomValueGenerator
 def fill_required_params(data, json_schema):
     data = data.copy()
     required_props = json_schema.get('required', [])
@@ -114,6 +127,8 @@ def fill_required_params(data, json_schema):
     return data
 
 
+# Used by RAMLTester to sort resources by method (so that items are
+# created, then read/replaced/patched, then deleted)
 def sort_by_priority(resources):
     from collections import defaultdict
     priorities = {
