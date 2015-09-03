@@ -5,6 +5,7 @@ In alphabetical order:
 * [Artem Kostiuk](https://github.com/postatum)
 * [Chris Hart](https://github.com/chrstphrhrt)
 * [Jonathan Stoikovitch](https://github.com/jstoiko)
+* [Vaz Allen](https://github.com/vaz)
 
 ## Pull-requests
 
