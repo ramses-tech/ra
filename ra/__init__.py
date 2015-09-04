@@ -14,23 +14,24 @@ class API(object):
         self.spec = ramlfications.parse(raml)
         self.autotester = None
 
-    def __call__(self, scope_or_route, **request_options):
-        """Use instance as a decorator on a function to mark it as a Ra
-        test suite (sugar for ``API.suite``).
+    # XXX: not used currently; finish pytest plugin
+    # def __call__(self, scope_or_route, **request_options):
+    #     """Use instance as a decorator on a function to mark it as a Ra
+    #     test suite (sugar for ``API.suite``).
 
-        Example::
+    #     Example::
 
-            @ra.api(raml)               # <-- equiv to @ra.API(raml).suite ...
-            def suite(api):
-                isinstance(api, ra.API) # true
-                @api.test('GET /')
-                def get_root(req): ...
-        """
-        return self.suite(scope_or_route)
+    #         @ra.api(raml)               # <-- equiv to @ra.API(raml).suite ...
+    #         def suite(api):
+    #             isinstance(api, ra.API) # true
+    #             @api.test('GET /')
+    #             def get_root(req): ...
+    #     """
+    #     return self.suite(scope_or_route)
 
-    def suite(self, scope):
-        scope.__ra__ = _RaInfo(scope, api=self, test_suite=True)
-        return scope
+    # def suite(self, scope):
+    #     scope.__ra__ = _RaInfo(scope, api=self, test_suite=True)
+    #     return scope
 
     def test(self, route, **options):
         def decorator(fn):
@@ -161,7 +162,7 @@ class Request(object):
         return self._execute_fn()
 
 
-#TODO: maybe use attrs
+#TODO: maybe use attrs; clean this up
 class _RaInfo(object):
     "Internal tagging object for storing info on __ra__ attribute"
 
@@ -173,6 +174,9 @@ class _RaInfo(object):
 
     def issuite(self):
         return self.test_suite
+
+    def istest(self):
+        return self.test is not None
 
     def __repr__(self):
         return str(self.__dict__)
