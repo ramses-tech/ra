@@ -12,6 +12,7 @@ requires = [
     'ramlfications==0.1.5',
     'jsonschema',
     'six',
+    'pytest'
 ]
 
 
