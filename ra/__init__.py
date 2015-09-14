@@ -10,9 +10,6 @@ from .utils import get_uri_param_name
 from .raml_utils import get_body_by_media_type
 
 
-STRIP_PROTOCOL_HOST_PORT = re.compile(r'^(?:\w+://)?[^/]*')
-
-
 def api(raml, app):
     """The main entry point to using Ra.
 
@@ -26,16 +23,9 @@ class API(object):
         self.app = app
         self.test_suite = TestSuite()
 
-        if not is_raml(raml_path_or_string):
-            self.raml_path = raml_path_or_string
-        else:
-            self.raml_path = None
-
-        self.raml = ramlfications.parse(raml_path_or_string)
+        self.raml_path, self.raml = parse_raml(raml_path_or_string)
         self.raml_resource_nodes = sort_resources(self.raml.resources)
-
-        self.path_prefix = STRIP_PROTOCOL_HOST_PORT.sub(
-            '', self.raml.base_uri).rstrip('/')
+        self.path_prefix = path_from_uri(self.raml.base_uri)
 
         self.resources = []
 
@@ -267,6 +257,17 @@ class TestSuite(object):
         self.tests.append(test)
 
 
+def parse_raml(raml_path_or_string):
+    raml_path = None
+    if not is_raml(raml_path_or_string):
+        raml_path = raml_path_or_string
+
+    import ramlfications
+    raml = ramlfications.parse(raml_path_or_string)
+
+    return raml_path, raml
+
+
 def resource_name_from_path(path):
     return path.split('/')[-1]
 
@@ -305,6 +306,12 @@ def resource_full_path(path, parent=None):
     if parent is None:
         return path
     return parent.path + path
+
+
+STRIP_PROTOCOL_HOST_PORT = re.compile(r'^(?:\w+://)?[^/]*')
+
+def path_from_uri(uri):
+    return STRIP_PROTOCOL_HOST_PORT.sub('', uri).rstrip('/')
 
 
 def fields_in_string(s):
