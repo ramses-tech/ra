@@ -26,7 +26,7 @@ class API(object):
         self.app = app
         self.test_suite = TestSuite()
 
-        if not raml_path_or_string.startswith('#%RAML'):
+        if not is_raml(raml_path_or_string):
             self.raml_path = raml_path_or_string
         else:
             self.raml_path = None
@@ -269,6 +269,10 @@ class TestSuite(object):
 
 def resource_name_from_path(path):
     return path.split('/')[-1]
+
+
+def is_raml(s):
+    return s.startswith("#%RAML")
 
 
 def sort_resources(resources):
