@@ -31,10 +31,7 @@ class API(object):
 
         self.RequestClass = make_request_class(app)
 
-        # if JSONEncoder is None:
-        #     # try to get JSONEncoder from app (like webtest.TestApp)
-        #     JSONEncoder = getattr(app, 'JSONEncoder', json.JSONEncoder)
-        self.JSONEncoder = JSONEncoder
+        self.JSONEncoder = JSONEncoder or json.JSONEncoder
 
     def resource(self, path, factory=None, parent=None, **uri_params):
         full_path = resource_full_path(path, parent)
@@ -158,7 +155,9 @@ class Resource(object):
                     data = factory()
 
             if data is not None:
-                body = six.binary_type(json.dumps(data), encoding='utf-8') # , cls=self.api.JSONEncoder) # XXX
+                body = six.binary_type(
+                    json.dumps(data, cls=self.api.JSONEncoder),
+                    encoding='utf-8')
 
         self.methods[verb] = method
 
