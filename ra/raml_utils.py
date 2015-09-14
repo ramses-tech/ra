@@ -5,10 +5,10 @@ def get_response_by_code(resource, code):
             return resp
 
 
-def get_body_by_mediatype(raml_obj, mediatype):
-    bodies = raml_obj.body or []
+def get_body_by_media_type(method, media_type):
+    bodies = method.body or []
     for body in bodies:
-        if body.mime_type == mediatype:
+        if body.mime_type == media_type:
             return body
 
 

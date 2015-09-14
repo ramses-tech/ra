@@ -39,4 +39,9 @@ setup(name='ra',
       zip_safe=False,
       install_requires=requires,
       tests_require=requires,
-      test_suite="ra")
+      test_suite="ra",
+      entry_points = {
+          'pytest11': [
+              'ra = ra.plugins.pytest'
+          ]
+      })

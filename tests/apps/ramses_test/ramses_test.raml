@@ -1,0 +1,466 @@
+#%RAML 0.8
+---
+title: ramses_test API
+documentation:
+  - title: ramses_test REST API
+    content: |
+      Welcome to the ramses_test API.
+baseUri: http://{host}:{port}/{version}
+version: v1
+mediaType: application/json
+protocols: [HTTP]
+traits:
+  - collectionQuery:
+      # limited selection of params from
+      # https://nefertari.readthedocs.org/en/stable/making_requests.html#query-syntax
+      queryParameters:
+        _limit:
+          displayName: Limit
+          description: Limit the returned collection to n results
+          type: integer
+          minimum: 0
+          default: 20
+          example: 10
+        _page:
+          displayName: Page
+          description: Start results at nth page (_page * _limit)
+          type: integer
+          minimum: 0
+          default: 0
+          example: 1
+        _sort:
+          displayName: Sort
+          description: Sort collection by this field name
+          type: string
+          minLength: 1
+          example: _pk
+        _start:
+          displayName: Start
+          description: Start results at nth item (first item is 0)
+          type: integer
+          minimum: 0
+          example: 1
+        _fields:
+          displayName: Fields
+          description: Filter results to show only these fields (comma-separated)
+          type: string
+          example: _pk
+
+/users:
+  description: Collection of users
+
+  get:
+    is: [collectionQuery]
+    description: List users
+    responses:
+      200:
+        description: Returns list of users
+
+  post:
+    description: Create a new user
+    body:
+      application/json:
+        schema: !include schemas/user.json
+        example: |
+          {
+              "username": "joe",
+              "email": "joe@example.com",
+              "password": "v3rys3cr3t",
+              "first_name": "Joe"
+          }
+    responses:
+      201:
+        description: Created user
+        body:
+          application/json:
+            schema: !include schemas/user.json
+
+  patch:
+    description: Update multiple users
+    queryParameters:
+      first_name:
+        description: (filtering example) patch only those with this first name
+        type: string
+        example: Joe
+    body:
+      application/json:
+        example: |
+          { "last_name": "McPerson" }
+    responses:
+      200:
+        description: Users updated
+        body:
+          application/json:
+            example: |
+              {
+                  "explanation": "",
+                  "message": "Updated 2 User(s) objects",
+                  "request_url": "http://localhost:6543/v1/users?_limit=2",
+                  "status_code": 200,
+                  "timestamp": "2015-09-11T03:14:20Z",
+                  "title": "OK"
+              }
+  delete:
+    description: Delete multiple users
+    responses:
+      200:
+        description: Users deleted
+        body:
+          application/json:
+            example: |
+              {
+                  "explanation": "",
+                  "message": "Deleted 2 User(s) objects",
+                  "request_url": "http://localhost:6543/v1/users?_limit=2",
+                  "status_code": 200,
+                  "timestamp": "2015-09-11T03:14:20Z",
+                  "title": "OK"
+              }
+
+  head:
+    description: Determine whether a given resource is available
+
+  options:
+    description: Retrieve the available HTTP verbs for a given resource
+
+  /{username}:
+    uriParameters:
+      username:
+        displayName: Username
+        type: string
+        maxLength: 50
+        example: joe
+
+    get:
+      description: Get a user
+      responses:
+        200:
+          body:
+            application/json:
+              schema: !include schemas/user.json
+
+    put:
+      description: Replace a user
+      body:
+        application/json:
+          example: |
+            {
+              "assigned_stories": [],
+              "created_at": "2015-09-11T02:13:29Z",
+              "email": "joe@example.com",
+              "first_name": "Joe",
+              "groups": [ "user" ],
+              "last_login": null,
+              "last_name": "McPerson",
+              "password": "$2a$10$RrAZgBWzCXaBR.uM83AOg.YzYfnhxujau7JuQ2enP1ota3lgyt/9S",
+              "profile": null,
+              "settings": {},
+              "status": "active",
+              "stories": [],
+              "updated_at": "2015-09-11T03:48:55Z",
+              "username": "joe"
+            }
+      responses:
+        200:
+          body:
+            application/json:
+              schema: !include schemas/user.json
+
+    patch:
+      description: Replace a user
+      body:
+        application/json:
+          example: { "email": "new_email@example.com" }
+      responses:
+        200:
+          body:
+            application/json:
+              schema: !include schemas/user.json
+
+    delete:
+      description: Delete a user
+      responses: { 200: { description: Deleted user } }
+
+    head:
+      description: Check user is available
+      responses: { 200: { description: User is available } }
+
+    options:
+      description: Retrieve available HTTP method for this resource
+      responses: { 200: { description: Methods listed in 'Allow' header } }
+
+    /settings:
+      displayName: User settings
+      get:
+        description: Get all settings of a particular user
+        responses:
+          200:
+            body:
+              application/json:
+                schema: { "type": "object" }
+                example: { "language": "en" }
+      post:
+        description: Change a user's settings
+        body:
+          application/json:
+            schema: { "type": "object" }
+            example: { "language": "en" }
+        responses:
+          200:
+            body:
+              application/json:
+                schema: { "type": "object" }
+                example: { "language": "en" }
+
+    /groups:
+      displayName: User groups
+      get:
+        description: Get all groups of a particular user
+        responses:
+          200:
+            body:
+              application/json:
+                schema: |
+                  {
+                    "type": "object",
+                    "properties": {
+                      "count": { "type": "integer", "minimum": 0 },
+                      "data": { "type": "array" }
+                    }
+                  }
+                example: |
+                  {
+                      "count": 2,
+                      "data": [ "user", "admin" ]
+                  }
+      post:
+        description: Change a user's groups
+        body:
+          application/json:
+            example: { "admin": null }
+        responses:
+          200:
+            body:
+              application/json:
+                schema: |
+                  {
+                    "type": "object",
+                    "properties": {
+                      "count": { "type": "integer", "minimum": 0 },
+                      "data": { "type": "array" }
+                    }
+                  }
+                example: |
+                  {
+                      "count": 2,
+                      "data": [ "user", "admin" ]
+                  }
+
+    /profile:
+      displayName: User profile
+      get:
+        description: Get a user's profile
+        responses:
+          200:
+            body:
+              application/json:
+                schema: !include schemas/profile.json
+                example: |
+                  {
+                      "_pk": "502",
+                      "_self": "http://localhost:6543/api/users/joe/profile",
+                      "_type": "Profile",
+                      "_version": 0,
+                      "address": "123 Fake St",
+                      "created_at": "2015-09-11T03:58:35Z",
+                      "id": 502,
+                      "updated_at": "2015-09-11T03:58:35Z",
+                      "user": "joe",
+                      "user_id": "joe"
+                  }
+
+      post:
+        description: Create a user's profile
+        body:
+          application/json:
+            schema: !include schemas/profile.json
+            example: { "address": "123 Pretend Rd" }
+        responses:
+          200:
+            body:
+              application/json:
+                schema: !include schemas/profile.json
+                example: |
+                  {
+                      "_pk": "502",
+                      "_self": "http://localhost:6543/api/users/joe/profile",
+                      "_type": "Profile",
+                      "_version": 0,
+                      "address": "123 Fake St",
+                      "created_at": "2015-09-11T03:58:35Z",
+                      "id": 502,
+                      "updated_at": "2015-09-11T03:58:35Z",
+                      "user": "joe",
+                      "user_id": "joe"
+                  }
+      patch:
+        description: Update a user's profile
+        body:
+          application/json:
+            schema: !include schemas/profile.json
+            example: { "address": "123 Not Real Ave" }
+        responses: { 200: { description: Returns the user's profile } }
+
+/stories:
+  description: Collection of stories
+
+  get:
+    description: List stories
+    responses:
+      200:
+        description: Returns a list of stories
+
+  post:
+    description: Create a new story
+    body:
+      application/json:
+        schema: !include schemas/story.json
+        example: |
+          {
+            "owner": "joe",
+            "owner_id": "joe",
+            "due_date": "2016-11-03T14:51:14Z",
+            "name": "Go grocery shopping",
+            "description": "Eggs, steak, coffee"
+          }
+    responses:
+      201:
+        description: Created story
+        body:
+          application/json:
+            schema: !include schemas/story.json
+
+  patch:
+    description: Update multiple stories
+    queryParameters:
+      owner_id:
+        description: Patch only those stories with this owner_id
+        type: string
+        example: joe
+    body:
+      application/json:
+        example: { "assignee_id": "joe" }
+    responses:
+      200:
+        description: Stories updated
+        body:
+          application/json:
+            example: |
+              {
+                  "explanation": "",
+                  "message": "Updated 2 Story(s) objects",
+                  "request_url": "http://localhost:6543/v1/stories?owner_id=joe",
+                  "status_code": 200,
+                  "timestamp": "2015-09-11T03:14:20Z",
+                  "title": "OK"
+              }
+
+  delete:
+    description: Delete multiple stories
+    responses:
+      200:
+        description: Stories deleted
+        body:
+          application/json:
+            example: |
+              {
+                  "explanation": "",
+                  "message": "Deleted 2 Story(s) objects",
+                  "request_url": "http://localhost:6543/v1/stories?_limit=2",
+                  "status_code": 200,
+                  "timestamp": "2015-09-11T03:14:20Z",
+                  "title": "OK"
+              }
+
+  head:
+    description: Determine whether a given resource is available
+
+  options:
+    description: Retrieve the available HTTP verbs for a given resource
+
+  /{id}:
+    uriParameters:
+      id:
+        description: story ID
+        type: integer
+        minimum: 1
+        example: 1
+
+    get:
+      description: Get a story
+      responses:
+        200:
+          body:
+            application/json:
+              schema: !include schemas/story.json
+
+    put:
+      description: Replace a story
+      body:
+        application/json:
+          example: |
+            {
+                "arbitrary_object": null,
+                "assignee": "joe",
+                "assignee_id": "joe",
+                "attachment": null,
+                "available_for": null,
+                "completed": false,
+                "created_at": "2015-09-11T05:01:27Z",
+                "description": "Eggs, steak, coffee",
+                "due_date": "2016-11-03T14:51:14Z",
+                "id": 516,
+                "name": "Go grocery shopping",
+                "owner": "joe",
+                "owner_id": "joe",
+                "price": null,
+                "progress": 0.0,
+                "rating": null,
+                "reads": 0,
+                "signs_number": null,
+                "start_date": null,
+                "unicode_description": null,
+                "unicode_name": null,
+                "updated_at": null,
+                "valid_date": null,
+                "valid_time": null
+            }
+      responses:
+        200:
+          body:
+            application/json:
+              schemas: !include schemas/story.json
+
+    patch:
+      description: Update a story
+      body:
+        application/json:
+          example: { "completed": true }
+      responses:
+        200:
+          body:
+            application/json:
+              schemas: !include schemas/story.json
+
+    delete:
+      description: Delete a story
+      responses: { 200: { description: Deleted story } }
+
+    head:
+      description: Check story is available
+      responses: { 200: { description: Story is available } }
+
+    options:
+      description: Retrieve available HTTP method for this resource
+      responses: { 200: { description: Methods listed in 'Allow' header } }
+

@@ -1,182 +1,361 @@
+import re
 import collections
 import webob
 import ramlfications
-from functools import wraps
+import six
+import simplejson as json
+from functools import wraps, partial
+
+from .utils import get_uri_param_name
+from .raml_utils import get_body_by_media_type
 
 
-def api(raml):
-    return API(raml)
+STRIP_PROTOCOL_HOST_PORT = re.compile(r'^(?:\w+://)?[^/]*')
+
+
+def api(raml, app):
+    """The main entry point to using Ra.
+
+    :return: instance of ra.API
+    """
+    return API(raml, app)
 
 
 class API(object):
-    def __init__(self, raml):
-        self.raml = raml
-        self.spec = ramlfications.parse(raml)
-        self.autotester = None
+    def __init__(self, raml_path_or_string, app, JSONEncoder=None):
+        self.app = app
+        self.test_suite = TestSuite()
 
-    # XXX: not used currently; finish pytest plugin
-    # def __call__(self, scope_or_route, **request_options):
-    #     """Use instance as a decorator on a function to mark it as a Ra
-    #     test suite (sugar for ``API.suite``).
+        if not raml_path_or_string.startswith('#%RAML'):
+            self.raml_path = raml_path_or_string
+        else:
+            self.raml_path = None
 
-    #     Example::
+        self.raml = ramlfications.parse(raml_path_or_string)
+        self.raml_resource_nodes = sort_resources(self.raml.resources)
 
-    #         @ra.api(raml)               # <-- equiv to @ra.API(raml).suite ...
-    #         def suite(api):
-    #             isinstance(api, ra.API) # true
-    #             @api.test('GET /')
-    #             def get_root(req): ...
-    #     """
-    #     return self.suite(scope_or_route)
+        self.path_prefix = STRIP_PROTOCOL_HOST_PORT.sub(
+            '', self.raml.base_uri).rstrip('/')
 
-    # def suite(self, scope):
-    #     scope.__ra__ = _RaInfo(scope, api=self, test_suite=True)
-    #     return scope
+        self.resources = []
 
-    def test(self, route, **options):
+        self.RequestClass = make_request_class(app)
+
+        # if JSONEncoder is None:
+        #     # try to get JSONEncoder from app (like webtest.TestApp)
+        #     JSONEncoder = getattr(app, 'JSONEncoder', json.JSONEncoder)
+        self.JSONEncoder = JSONEncoder
+
+    def resource(self, path, factory=None, parent=None, **uri_params):
+        full_path = resource_full_path(path, parent)
+        if full_path not in self.raml_resource_nodes:
+            raise APIError("Trying to declare resource scope {}: resource not "
+                           "defined in RAML: {}".format(path, self.raml_path))
+
+        res = list(self.raml_resource_nodes[full_path].values())[0]
+        uri_args = uri_args_from_example(res)
+        uri_args.update(uri_params)
+
+        resource = Resource(path, self,
+                            factory=factory, parent=parent, **uri_args)
+        self.resources.append(resource)
+
         def decorator(fn):
-            fn.__ra__ = _RaInfo(fn, test=RequestSignature.from_route(
-                route, **options))
+            # tag this function as a resource scope for the pytest collector
+            # and store the argument that will be passed to it when it's called
+            fn.__ra__ = {
+                'type': 'resource',
+                'args': [resource],
+                'path': full_path
+            }
+            fn.__test__ = False # this is a scope for tests, not a test
             return fn
+
         return decorator
 
+
+class Resource(object):
+    def __init__(self, path, api, factory=None, parent=None, **uri_params):
+        self.path = resource_full_path(path, parent)
+        self.name = resource_name_from_path(path)
+        self.api = api
+        self.app = api.app
+        self.parent = parent
+        self._factory = factory
+        self.methods = dict()
+
+        RequestClass = self.api.RequestClass
+        # if it looks like a webob request class, treat it like one
+        self._request_factory = (RequestClass.blank
+                                if getattr(RequestClass, 'blank', None)
+                                else RequestClass)
+
+        self.uri_params = {}
+        if parent is not None:
+            self.uri_params = parent.uri_params
+        self.uri_params.update(uri_params)
+
     @property
-    def autotest(self):
-        if self.autotester is None:
-            self.autotester = self.AutoTest()
-        return self.autotester
+    def full_path(self):
+        return self.api.path_prefix + self.path
 
-    class AutoTest(object):
-        def __init__(self, api):
-            self.api = api
-            self.hooks = Hooks()
+    @property
+    def is_dynamic(self):
+        return self.path.strip('/').endswith('}')
 
-        def __call__(self, app):
-            # TODO: implement autotest
-            pass
+    def resolve_path(self, **uri_params):
+        args = self.uri_params.copy()
+        args.update(uri_params)
+        return self.full_path.format(**args)
 
+    @property
+    def resolved_path(self):
+        return self.resolve_path()
 
-class Hooks(object):
-    """Simple hooks manager.
+    @property
+    def factory(self):
+        """Default resource factory"""
+        if self._factory is not None:
+            return self._factory
 
-    Hook callbacks run in the order they're added to each hook name, unless
-    the word 'before' is in the hook name, in which case they run in reverse
-    order so you can wrap things properly.
+        if self.is_dynamic:
+            if self.parent is not None:
+                return self.parent.factory
+            else:
+                return None
 
-    Example usage::
-
-        hooks = Hooks()
-        @hooks.before
-        def fn(x): print(x)
-
-        hooks.after(fn)
-
-        # later ...
-        hooks.run('before', 'running before the thing')
-        do_the_thing()
-        hooks.run('after', 'running after the thing')
-    """
-
-    def __init__(self):
-        self._hooks = defaultdict(list)
-
-    def run(self, name, *args, **kwargs):
-        callbacks = self._hooks[name]
-        for callback in callbacks:
-            callback(*args, **kwargs)
-
-    def _add_callback(self, name, fn):
-        if 'before' in name:
-            self._hooks[name] = [fn].extend(self._hooks[name])
+        try:
+            post_resource = self.api.raml_resource_nodes[self.path]['POST']
+        except KeyError:
+            return None
         else:
-            self._hooks[name].append(fn)
+            body =  get_body_by_media_type(post_resource,
+                                           'application/json')
+            self._factory = lambda: body.example
+            return self._factory
+
+    def resource(self, path, factory=None, **uri_params):
+        """Declare a scope for a subresource of this resource.
+        """
+        return self.api.resource(path, factory=factory, parent=self,
+                                 **uri_params)
+
+    def _get_method_node(self, verb):
+        return self.api.raml_resource_nodes[self.path][verb.upper()]
+
+    def method_test(self, verb, test_fn=None, **req_params):
+        verb = verb.upper()
+        # XXX: hard-coded default content type, probably ok for now
+        content_type = req_params.pop('content_type', 'application/json')
+
+        try:
+            method_node = self._get_method_node(verb)
+        except KeyError:
+            raise APIError("Tried to add test for undeclared method "
+                           "{} on {}".format(verb, self.path))
+
+        method = Method(method_node)
+
+        factory = req_params.pop('factory', None)
+        data = req_params.pop('data', None)
+        body = req_params.get('body', None)
+
+        if body is None:
+            if data is None:
+                factory = factory or method.factory or self.factory or None
+
+                if factory is not None:
+                    data = factory()
+
+            if data is not None:
+                body = six.binary_type(json.dumps(data), encoding='utf-8') # , cls=self.api.JSONEncoder) # XXX
+
+        self.methods[verb] = method
+
+        def decorator(fn):
+            req = self._request_factory(self.resolved_path,
+                                        method=verb,
+                                        body=body,
+                                       content_type='application/json',
+                                       **req_params)
+
+            req.data = data
+            req.factory = factory
+            req.raml = method.resource_node
+
+            # force the first parameter to be a request object.
+            # XXX: this doesn't work with pytest because it won't recognize
+            # a partial object as a test function (it doesn't have a code
+            # object)
+            # fn = partial(fn, req)
+            #
+            # Instead we should use fixtures for pytest.
+
+            # pytest collector will see this tag and recognize the function
+            # as a test function. The 'req' item will be returned by the
+            # 'req' fixture.
+            fn.__ra__ = { 'type': 'test', 'method': method, 'req': req }
+
+            # name_qualifiers = ' '.join(fn.__name__.split('_')[1:])
+            # if name_qualifiers:
+            #     name_qualifiers = ' ' + name_qualifiers
+            # test_wrapper.__name__ = "{} {}{}".format(
+            #     verb, self.path, name_qualifiers)
+
+            # XXX: this might not be necessary, at least for pytest, but
+            # might be to support other frameworks.
+            #
+            # It also would be necessary if we want autotests to be overridden.
+            self.api.test_suite.add_test(fn)
+            method.add_test(fn)
+
+            return fn
+
+        if six.callable(test_fn):
+            return decorator(test_fn)
+        return decorator
+
+    def get(self, test_fn=None, **req_params):
+        return self.method_test('get', test_fn=test_fn, **req_params)
+
+    def post(self, test_fn=None, **req_params):
+        return self.method_test('post', test_fn=test_fn, **req_params)
+
+    def put(self, test_fn=None, **req_params):
+        return self.method_test('put', test_fn=test_fn, **req_params)
+
+    def patch(self, test_fn=None, **req_params):
+        return self.method_test('patch', test_fn=test_fn, **req_params)
+
+    def delete(self, test_fn=None, **req_params):
+        return self.method_test('delete', test_fn=test_fn, **req_params)
+
+    def head(self, test_fn=None, **req_params):
+        return self.method_test('head', test_fn=test_fn, **req_params)
+
+    def options(self, test_fn=None, **req_params):
+        return self.method_test('options', test_fn=test_fn, **req_params)
+
+
+class Method(object):
+    def __init__(self, resource_node):
+        self.resource_node = resource_node
+        self.tests = []
+
+    @property
+    def factory(self):
+        body = get_body_by_media_type(self.resource_node, 'application/json')
+        if body is None:
+            return None
+        return lambda: body.example
+
+    def add_test(self, test):
+        self.tests.append(test)
 
     def __getattr__(self, name):
-        "Use as a decorator to add callbacks to hook ``name``"
-        return functools.partial(self._add_callback, name)
+        attr = getattr(self.resource_node, name, None)
+        if attr is not None:
+            return attr
+        raise AttributeError
 
 
-class RequestSignature(object):
-    """Stores request signature (URL, method and options) used when
-    declaring tests.
+class TestSuite(object):
+    def __init__(self):
+        self.tests = []
+
+    def add_test(self, test):
+        self.tests.append(test)
+
+
+def resource_name_from_path(path):
+    return path.split('/')[-1]
+
+
+def sort_resources(resources):
+    resources_by_path = collections.OrderedDict()
+
+    for resource in resources:
+        method = resource.method.upper()
+
+        resources_by_path.setdefault(resource.path, collections.OrderedDict())
+        resources_by_path[resource.path].setdefault(method, [])
+        resources_by_path[resource.path][method] = resource
+
+    for methods in six.itervalues(resources_by_path):
+        if 'delete' in methods:
+            methods.move_to_end('delete')
+
+    return resources_by_path
+
+
+def uri_args_from_example(resource_node):
+    if resource_node.uri_params is None:
+        return {}
+    params = {}
+    for param in resource_node.uri_params:
+        params[param.name] = param.example
+    return params
+
+
+def resource_full_path(path, parent=None):
+    if parent is None:
+        return path
+    return parent.path + path
+
+
+def fields_in_string(s):
+    import string
+    return [tup[1] for tup in string.Formatter().parse(s)]
+
+
+def safe_format(s, *args, **kwargs):
+    """Safe version of str.format() that doesn't die with extra args."""
+    fieldnames = fields_in_string(s)
+    argc = len(args)
+    actual_pos_args = 0
+    actual_kw_args = {}
+    for name in fieldnames:
+        if name:
+            actual_kw_args[name] = kwargs[name]
+        else:
+            actual_pos_args += 1
+    return s.format(*args[:actual_pos_args], **actual_kw_args)
+
+
+
+def make_request_class(app, base=None):
+    """Create a callable, app-bound request class from a base request class.
+
+    :param app: the app we want to make requests to, generally an instance of
+                ``webtest.TestApp`` but can be anything that responds to
+                request() and takes a webob-like request object as a first
+                positional argument.
+    :param base: the base request class (default ``webob.request.BaseRequest``).
+    :return: a new callable request class bound to :app:
     """
-    def __init__(self, url, method='GET', **options):
-        self.url = url
-        self.method = method
-        self.options = options
-
-    @classmethod
-    def from_route(cls, route, **options):
-        method, url = route.split()[:2]
-        return cls(url, method, **options)
-
-    def make_request(self, app, **options):
-        """Given a webtest-like ``app``, can generate a ``ra.Request`` using
-        ``request_signature.make_request(app)``.
-        """
-        status = options.pop('status', None)
-        expect_errors = options.pop('expect_errors', None)
-
-        _request = app.RequestClass.blank(
-            self.url, method=self.method, **self.options)
-        request = Request(_request)
-
-        @request.execute_with
-        def execute_request():
-            return app.do_request(
-                _request, status=status, expect_errors=expect_errors)
-
-        return request
 
 
-class Request(object):
-    """A wrapper for webob/webtest-like requests that can be injected with
-    an "execute" function, and called as a function to execute.
+    try:
+        from webtest import TestResponse
+    except ImportError: # pragma: no cover
+        ResponseClass = base or webob.Response
+    else: # pragma: no cover
+        ResponseClass = TestResponse
 
-    Designed to be passed a function that's a closure over a webtest-like app,
-    where the app executes the request. Example::
+    def __call__(self, status=None, expect_errors=False, **req_params):
+        return app.request(self,
+                           status=status, expect_errors=expect_errors,
+                          **req_params)
 
-        app = get_webtest_like_app()
-        _request = app.RequestClass.blank('/cats', method='POST')
-        request = Request(_request)
+    RequestClass = type(
+        'Request',
+        (webob.request.BaseRequest,),
+        {
+            '__call__': __call__,
+            'ResponseClass': ResponseClass
+        })
 
-        @request.execute_with
-        def execute_fn():
-            app.do_request(_request)
-        response = request()
-    """
-    def __init__(self, request_to_wrap):
-        self._wrapped = request_to_wrap
-        self._execute_fn = None
-
-    def __getattr__(self, attr):
-        return getaattr(self.wrapped, attr)
-
-    def execute_with(self, fn):
-        self._execute_fn = fn
-        return fn
-
-    def __call__(self):
-        if self._execute_fn is None:
-            raise NotImplementedError("_execute_fn not set; aborting")
-        return self._execute_fn()
+    return RequestClass
 
 
-#TODO: maybe use attrs; clean this up
-class _RaInfo(object):
-    "Internal tagging object for storing info on __ra__ attribute"
-
-    def __init__(self, object, api=None, test=None, test_suite=False):
-        self.object = object
-        self.api = api
-        self.test = test
-        self.test_suite = test_suite
-
-    def issuite(self):
-        return self.test_suite
-
-    def istest(self):
-        return self.test is not None
-
-    def __repr__(self):
-        return str(self.__dict__)
+class APIError(Exception): pass

@@ -1,0 +1,9 @@
+nefertari
+ramses
+ra
+
+Paste==2.0.2
+pyramid==1.5.7
+waitress==0.8.9
+
+-e .
