@@ -10,6 +10,7 @@ from .raml_utils import (
     uri_args_from_example,
     resource_full_path,
 )
+from . import factory
 from .utils import path_from_uri
 
 
@@ -29,6 +30,21 @@ class API(object):
         self.RequestClass = make_request_class(app)
 
         self.JSONEncoder = JSONEncoder or json.JSONEncoder
+
+        self.examples = self._define_factories()
+
+    def _define_factories(self):
+        examples = factory.Examples()
+        for resources in six.itervalues(self.raml.resources):
+            try:
+                post_resource = resources['POST']
+                example = post_resource.body['application/json'].example
+            except KeyError:
+                pass
+            else:
+                resource_name = resource_name_from_path(post_resource.path)
+                examples.define_factory(resource_name, lambda: example)
+        return examples
 
     def resource(self, path, factory=None, **uri_params):
         """Decorator for declaring a resource scope.
@@ -154,23 +170,13 @@ class ResourceScope(object):
         For example, for either a "/users" or a "/users/{username}" resource,
         this will look for the POST body example value on "/users".
         """
-        if self._factory is not None:
-            return self._factory
-
         if self.is_dynamic:
-            if self.parent is not None:
-                return self.parent.factory
-            else:
+            if self.parent is None:
                 return None
+            else:
+                return self.parent.factory
 
-        try:
-            post_resource = self.api.raml.resources[self.path]['POST']
-            example = post_resource.body['application/json'].example
-        except (KeyError, AttributeError):
-            return None
-        else:
-            self._factory = lambda: example
-            return self._factory
+        return self.api.examples.get_factory(self.name)
 
     def resource(self, path, factory=None, **uri_params):
         """Declare a nested resource scope under this resource scope.
