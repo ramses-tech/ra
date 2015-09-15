@@ -1,3 +1,32 @@
+import six
+
+
+def is_raml(s):
+    return s.startswith("#%RAML")
+
+
+def resource_name_from_path(path):
+    return path.split('/')[-1]
+
+
+def uri_args_from_example(resource_node):
+    if resource_node.uri_params is None:
+        return {}
+    params = {}
+    for name, param in six.iteritems(resource_node.uri_params):
+        params[name] = param.example
+    return params
+
+
+def resource_full_path(path, parent=None):
+    if parent is None:
+        return path
+    return parent.path + path
+
+
+## XXX: clean up after this:
+
+
 def get_response_by_code(resource, code):
     responses = resource.responses or []
     for resp in responses:

@@ -1,5 +1,31 @@
 import random
+import re
 from string import ascii_letters
+
+
+STRIP_PROTOCOL_HOST_PORT = re.compile(r'^(?:\w+://)?[^/]*')
+
+
+def path_from_uri(uri):
+    return STRIP_PROTOCOL_HOST_PORT.sub('', uri).rstrip('/')
+
+
+def list_to_dict(lst, by='name'):
+    dct = {}
+    for el in (lst or []):
+        dct[getattr(el, by)] = el
+    return dct
+
+
+def path_from_uri(uri):
+    return STRIP_PROTOCOL_HOST_PORT.sub('', uri).rstrip('/')
+
+
+def list_to_dict(lst, by='name'):
+    dct = {}
+    for el in (lst or []):
+        dct[getattr(el, by)] = el
+    return dct
 
 
 # TODO: remove when TestRunners are removed
