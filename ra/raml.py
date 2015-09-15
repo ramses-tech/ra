@@ -14,7 +14,7 @@ class RootNode(wrapt.ObjectProxy):
     def __init__(self, wrapped):
         super(RootNode, self).__init__(wrapped)
 
-        self.resources = map_resources(ResourceNode(r)
+        self.resources = _map_resources(ResourceNode(r)
                                        for r in wrapped.resources)
 
 
@@ -52,7 +52,7 @@ class Response(wrapt.ObjectProxy):
         self.body    = list_to_dict(wrapped.body, by='mime_type')
 
 
-def map_resources(resources):
+def _map_resources(resources):
     resources_by_path = collections.OrderedDict()
 
     for resource in resources:
