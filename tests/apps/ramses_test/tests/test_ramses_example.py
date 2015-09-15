@@ -5,14 +5,10 @@ from paste.deploy import loadapp
 import ra
 
 
-ramses_test = path.abspath(path.join(path.dirname(__file__), '..'))
-raml_file = path.join(ramses_test, 'ramses_test.raml')
-
-app = loadapp('config:test.ini', relative_to=path.abspath(
-    path.join(path.dirname(__file__), '..')))
-test_app = webtest.TestApp(app)
-
-api = ra.api(raml_file, test_app)
+appdir = path.abspath(path.join(path.dirname(__file__), '..'))
+ramlfile = path.join(appdir, 'api.raml')
+testapp = webtest.TestApp('config:test.ini', relative_to=appdir)
+api = ra.api(ramlfile, testapp)
 
 
 def user_factory():
