@@ -4,8 +4,7 @@ import types
 import pytest
 from _pytest.python import PyCollector, Module
 
-from .. import APIError
-from ..api import API
+from ..dsl import APISuite
 
 
 """pytest plugin for Ra.
@@ -184,9 +183,9 @@ def req(request):
 def api_around_all(request):
     @request.addfinalizer
     def fin():
-        for api in API.instances:
+        for api in APISuite.instances:
             api.hooks.run('after_all')
-    for api in API.instances:
+    for api in APISuite.instances:
         api.hooks.run('before_all')
 
 
@@ -194,10 +193,10 @@ def api_around_all(request):
 def api_before_each(request, req):
     @request.addfinalizer
     def fin():
-        for api in API.instances:
+        for api in APISuite.instances:
             if req.scope.api is api:
                 api.hooks.run('after_each', req)
-    for api in API.instances:
+    for api in APISuite.instances:
         if req.scope.api is api:
             api.hooks.run('before_each', req)
 

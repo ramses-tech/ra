@@ -1,34 +1,21 @@
 import warnings
-import webob
 import six
-from six.moves import urllib
 import simplejson as json
 
 from . import raml
-from .raml_utils import (
-    is_raml,
-    resource_name_from_path,
-    uri_args_from_example,
-    resource_full_path,
-)
 from . import factory
-from .utils import (
-    path_from_uri,
-    merge_query_params,
-    path_to_identifier,
-    path_parent,
-)
+from .utils import path_from_uri, merge_query_params, path_to_identifier
 from .hooks import Hooks
 from .validate import RAMLValidator
 
 
-class API(object):
+class APISuite(object):
     """Represents an API test suite.
     """
     instances = []
 
     def __new__(cls, *args, **kwargs):
-        instance = super(API, cls).__new__(cls)
+        instance = super(APISuite, cls).__new__(cls)
         cls.instances.append(instance)
         return instance
 
@@ -58,7 +45,7 @@ class API(object):
             except KeyError:
                 continue
             else:
-                resource_name = resource_name_from_path(post_resource.path)
+                resource_name = raml.resource_name_from_path(post_resource.path)
                 examples.make_factory(resource_name, example)
 
         return examples
@@ -85,12 +72,12 @@ class API(object):
         """
         # pop parent arg passed in by the subresource decorator
         parent = uri_params.pop('parent', None)
-        full_path = resource_full_path(path, parent)
+        full_path = raml.resource_full_path(path, parent)
 
         if full_path in self.raml.resources:
             # get URI param example values:
             res = list(self.raml.resources[full_path].values())[0]
-            uri_args = uri_args_from_example(res)
+            uri_args = raml.uri_args_from_example(res)
             uri_args.update(uri_params)
         else:
             warnings.warn("Declaring resource scope {}: resource not declared "
@@ -137,8 +124,8 @@ class ResourceScope(object):
     generating data for request bodies.
     """
     def __init__(self, path, api, factory=None, parent=None, **uri_params):
-        self.path = resource_full_path(path, parent)
-        self.name = resource_name_from_path(self.path)
+        self.path = raml.resource_full_path(path, parent)
+        self.name = raml.resource_name_from_path(self.path)
         self.api = api
         self.app = api.app
         self._factory = factory
@@ -342,7 +329,7 @@ class TestSuite(object):
 def _parse_raml(raml_path_or_string):
     "Returns the RAML file path (or None if arg is a string) and parsed RAML."
     raml_path = None
-    if not is_raml(raml_path_or_string):
+    if not raml.is_raml(raml_path_or_string):
         raml_path = raml_path_or_string
 
     parsed_raml = raml.parse(raml_path_or_string)
@@ -378,7 +365,7 @@ def make_request_class(app, base=None):
     :return:    a new class for callable requests bound to :app: and pre-set
                 with :req_params:
     """
-
+    import webob
 
     try:
         from webtest import TestResponse
@@ -431,6 +418,3 @@ class Autotest(object):
                      "def {method}(req): req()".format(method=method))
         _autoresource.__name__ = "autotest:" + path
         return (path_to_identifier(path), _autoresource)
-
-
-class APIError(Exception): pass

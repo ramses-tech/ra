@@ -9,8 +9,8 @@ Ra also provides default automatic testing of resources defined in the
 RAML to validate responses.
 
 """
-from .api import APIError
 from . import raml
+from .dsl import APISuite
 
 
 def api(raml, app, JSONEncoder=None):
@@ -21,7 +21,6 @@ def api(raml, app, JSONEncoder=None):
     :param JSONEncoder: an optional JSONEncoder class to encode data used in
                         request bodies.
 
-    :return: instance of ``ra.API``, used to define the test suite
+    :return: instance of ``ra.APISuite``, used to define the test suite
     """
-    from .api import API
-    return API(raml, app, JSONEncoder=JSONEncoder)
+    return APISuite(raml, app, JSONEncoder=JSONEncoder)

@@ -1,5 +1,5 @@
 import jsonschema
-from .raml_utils import named_params_schema
+from .raml import named_params_to_json_schema
 
 
 class RAMLValidator(object):
@@ -41,7 +41,7 @@ class RAMLValidator(object):
 
     def _validate_header(self, header_props, header_val):
         try:
-            prop_schema = named_params_schema(header_props)
+            prop_schema = named_params_to_json_schema(header_props)
         except KeyError as ex:
             raise RAMLValidationError('Missing required RAML named parameter: '
                                       '{}'.format(ex))
