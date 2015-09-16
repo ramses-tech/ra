@@ -1,12 +1,34 @@
 import six
+import re
+
+
+STRIP_DYNAMIC = re.compile(r'/\{.*?}')
 
 
 def is_raml(s):
     return s.startswith("#%RAML")
 
 
-def resource_name_from_path(path):
-    return path.split('/')[-1]
+def resource_name_from_path(path, singularize=True):
+    """Returns a (possibly nested) resource name for an API path).
+
+    This function will try to treat collection and item paths the same,
+    singularizing the collection name if singularize=True (default).
+    Nested resources on the item are appended to make a dotted name
+    for the subresource.
+
+    For example, both "/users" and "/users/{username}" return 'user',
+    while '/users/{username}/profile' returns 'user.profile'.
+
+    Attribute resources like "/users/{username}/settings" will return
+    'user.settings' despite not being model object (it's treated the same
+    by Ra).
+    """
+    parts = STRIP_DYNAMIC.sub('', path.strip('/')).split('/')
+    if singularize:
+        import inflection
+        parts = (inflection.singularize(part) for part in parts)
+    return '.'.join(parts)
 
 
 def uri_args_from_example(resource_node):

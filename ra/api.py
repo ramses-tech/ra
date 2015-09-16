@@ -49,10 +49,11 @@ class API(object):
                 post_resource = resources['POST']
                 example = post_resource.body['application/json'].example
             except KeyError:
-                pass
+                continue
             else:
                 resource_name = resource_name_from_path(post_resource.path)
-                examples.define_factory(resource_name, lambda: example)
+                examples.make_factory(resource_name, example)
+
         return examples
 
     def resource(self, path, factory=None, **uri_params):
