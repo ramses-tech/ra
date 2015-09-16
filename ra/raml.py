@@ -1,3 +1,8 @@
+"""
+This module provides a parse function for parsing RAML with ramlfications,
+as well as wrapper classes for the main ramlfications types to make
+them more pleasant to work with.
+"""
 import collections
 import six
 import ramlfications
@@ -11,6 +16,7 @@ def parse(raml_path_or_string):
 
 
 class RootNode(wrapt.ObjectProxy):
+    "Wraps a ``ramlfications.raml.RootNode and its contained objects``"
     def __init__(self, wrapped):
         super(RootNode, self).__init__(wrapped)
 
@@ -19,6 +25,9 @@ class RootNode(wrapt.ObjectProxy):
 
 
 class ResourceNode(wrapt.ObjectProxy):
+    """Wraps a ``ramlfications.raml.ResourceNode`` to map parameters, bodies and
+    responses by a sensible key.
+    """
     def __init__(self, wrapped):
         super(ResourceNode, self).__init__(wrapped)
 
@@ -45,6 +54,8 @@ class ResourceNode(wrapt.ObjectProxy):
 
 
 class Response(wrapt.ObjectProxy):
+    """Wraps a ``ramlfications.raml.Response`` to map headers and body by
+    a sensible key."""
     def __init__(self, wrapped):
         super(Response, self).__init__(wrapped)
 
@@ -53,6 +64,9 @@ class Response(wrapt.ObjectProxy):
 
 
 def _map_resources(resources):
+    """Map resources by path and then by method, preserving order except for
+    moving DELETEs to the end."""
+
     resources_by_path = collections.OrderedDict()
 
     for resource in resources:
