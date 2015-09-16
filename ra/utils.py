@@ -111,6 +111,27 @@ def get_uri_param_name(url):
     return part.strip()
 
 
+def merge_query_params(url, params):
+    """Takes a :url:, potentially with a querystring, and :params:,
+    a dict of new querystring parameters, and merges the querystring
+    parameters, returning a 2-tuple of a clean url and a separated
+    querystring.
+    """
+    if params:
+        if not isinstance(params, six.string_types):
+            params = urlencode(params, doseq=True)
+            if str('?') in url:
+                url += str('&')
+            else:
+                url += str('?')
+            url += params
+        if str('?') in url:
+            url, qs = url.split(str('?'), 1)
+        else:
+            qs = str('')
+        return url, qs
+
+
 # Used by DynamicResourceTester to generate its base url
 # by making a POST to the parent resource and checking the
 # Location header (url arg) against the resource's uri as

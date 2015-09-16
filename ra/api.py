@@ -1,6 +1,7 @@
 import warnings
 import webob
 import six
+from six.moves import urllib
 import simplejson as json
 
 from . import raml
@@ -11,7 +12,7 @@ from .raml_utils import (
     resource_full_path,
 )
 from . import factory
-from .utils import path_from_uri
+from .utils import path_from_uri, merge_query_params
 from .hooks import Hooks
 from .validate import RAMLValidator
 
@@ -212,7 +213,8 @@ class ResourceScope(object):
                             ``headers``, ``content_type``, etc). You can use
                             the ``data`` keyword to pass request body data
                             that should be encoded, or ``body`` to pass a raw
-                            body string.
+                            body string, and ``query_params`` to pass
+                            querystring parameters as a dict.
         """
         verb = verb.upper()
         content_type = req_params.pop('content_type', 'application/json')
@@ -227,6 +229,7 @@ class ResourceScope(object):
         factory = req_params.pop('factory', None)
         data = req_params.pop('data', None)
         body = req_params.get('body', None)
+        query_params = req_params.get('query_params', {})
 
         if body is None:
             if data is None:
@@ -243,12 +246,18 @@ class ResourceScope(object):
                     json.dumps(data, cls=self.api.JSONEncoder),
                     encoding='utf-8')
 
+        url, query_string = urllib.parse.urlencode(self.resolved_path,
+                                                   query_parmas)
+        if not query_string:
+            query_string = req_params.pop(query_string, '')
+
         def decorator(fn):
-            req = self._request_factory(self.resolved_path,
+            req = self._request_factory(url,
                                         method=verb,
                                         body=body,
-                                       content_type='application/json',
-                                       **req_params)
+                                        query_string=query_string,
+                                        content_type='application/json',
+                                        **req_params)
 
             req.data = data
             req.factory = factory
