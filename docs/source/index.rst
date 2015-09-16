@@ -27,4 +27,5 @@ Table of Contents
    writing_tests
    hooks
    autotest
+   selecting_tests
    changelog

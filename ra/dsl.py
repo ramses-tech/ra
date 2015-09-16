@@ -97,7 +97,7 @@ class APISuite(object):
                 'path': full_path
             }
             fn.__test__ = False # this is a scope for tests, not a test
-            fn.__name__ = 'resource:{}'.format(full_path)
+            fn.__name__ = full_path
             return fn
 
         return decorator
@@ -416,5 +416,4 @@ class Autotest(object):
                 method = method.lower()
                 exec("@resource.{method}\n"
                      "def {method}(req): req()".format(method=method))
-        _autoresource.__name__ = "autotest:" + path
         return (path_to_identifier(path), _autoresource)

@@ -104,7 +104,6 @@ class ResourceScopeCollector(PyCollector):
         return self._memoizedcall('_obj', self._importtestmodule)
 
     def _makeid(self):
-        """Magic that makes fixtures local to each scope"""
         return self.parent.nodeid + '::' + self.funcobj.__name__
 
     def _importtestmodule(self):
@@ -133,7 +132,7 @@ class ResourceScopeCollector(PyCollector):
 
 class AutotestCollector(PyCollector):
     def __init__(self, module, parent):
-        super(AutotestCollector, self).__init__(module.__name__+'.py', parent)
+        super(AutotestCollector, self).__init__(module.__name__, parent)
         self._module = module
 
     def collect(self):
@@ -142,6 +141,9 @@ class AutotestCollector(PyCollector):
 
     def _getobj(self):
         return self._module
+
+    def _makeid(self):
+        return self.parent.nodeid + '::' + self._module.__name__
 
     def funcnamefilter(self, name):
         """Treat all nested functions as tests, without requiring the 'test_'
