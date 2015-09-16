@@ -65,6 +65,7 @@ def users_resource(users):
         # This example uses the other scope-local fixture defined above.
         response = req()
         assert response.status_code == two_hundred
+        assert 'joe' in response
 
     @users.post
     def post_using_example(req):
@@ -74,7 +75,7 @@ def users_resource(users):
         # 
         # As in WebTest request methods, you can specify the expected
         # status code(s), which will be test the response status.
-        req(status=(201, 409))
+        req(status=201)
 
     # defining a custom user factory; underscored functions are not
     # considered tests (but better to import factories from another module)
