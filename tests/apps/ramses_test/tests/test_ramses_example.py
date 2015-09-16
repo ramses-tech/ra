@@ -2,11 +2,43 @@ import os
 import ra
 import pytest
 import webtest
+import ramses
+
 
 appdir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 ramlfile = os.path.join(appdir, 'api.raml')
 testapp = webtest.TestApp('config:test.ini', relative_to=appdir)
+
+# ra entry point: instantiate the API test suite
 api = ra.api(ramlfile, testapp)
+
+User = ramses.models.get_existing_model('User')
+Story = ramses.models.get_existing_model('Story')
+
+
+@api.hooks.before_each
+def delete_resources():
+    Story._delete_many(Story.get_collection())
+    User._delete_many(User.get_collection())
+
+
+@api.hooks.before_each(exclude=['POST /users'])
+def create_user():
+    User(**api.examples.build('user')).save()
+    # XXX: it takes some time for the object to be propagated to ES.
+    # This is not ideal at all.
+    import time; time.sleep(2)
+
+
+@api.hooks.before_each(only=['/stories*'], exclude=['POST'])
+def create_story():
+    Story(**api.examples.build('story')).save()
+
+@api.hooks.before_each
+def commit():
+    import transaction
+    transaction.commit()
+
 
 # defining a resource scope:
 

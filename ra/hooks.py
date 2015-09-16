@@ -1,5 +1,6 @@
 import collections
 import functools
+import fnmatch
 
 
 class Hooks(object):
@@ -26,18 +27,48 @@ class Hooks(object):
     def __init__(self):
         self._hooks = collections.defaultdict(list)
 
-    def run(self, name, *args, **kwargs):
+    def run(self, name, req=None, *args, **kwargs):
         callbacks = self._hooks[name]
-        for callback in callbacks:
+
+        for callback, conditions in callbacks:
+            # if callback.__name__ == 'create_user':
+            #     import pdb; pdb.set_trace()
+            if req is not None:
+                only, exclude = conditions['only'], conditions['exclude']
+                method = req.raml.method.upper()
+                path = req.raml.path
+                if only:
+                    ok = False
+                    for pattern in only:
+                        if _condition_match(pattern, method, path):
+                            ok = True
+                    if not ok:
+                        continue
+                if exclude:
+                    ok = True
+                    for pattern in exclude:
+                        if _condition_match(pattern, method, path):
+                            ok = False
+                            break
+                    if not ok:
+                        continue
             callback(*args, **kwargs)
 
-    def _add_callback(self, name, fn):
-        if 'before' in name:
-            self._hooks[name] = [fn].extend(self._hooks[name])
-        else:
-            self._hooks[name].append(fn)
+    def _add_callback(self, name, fn=None, only=None, exclude=None):
+        def decorator(_fn):
+            item = (_fn, dict(only=only, exclude=exclude))
+            self._hooks[name].append(item)
+            return _fn
+        if fn is not None:
+            return decorator(fn)
+        return decorator
 
     def __getattr__(self, name):
         "Use as a decorator to add callbacks to hook ``name``"
         return functools.partial(self._add_callback, name)
 
+
+def _condition_match(pattern, method, path):
+    """Check if method and path of request match condition pattern.
+    """
+    return fnmatch.fnmatch("{} {}".format(method, path), pattern)

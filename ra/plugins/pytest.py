@@ -5,6 +5,7 @@ import pytest
 from _pytest.python import PyCollector
 
 from .. import APIError
+from ..api import API
 
 
 """pytest plugin for Ra.
@@ -36,13 +37,8 @@ def trace_function(funcobj, *args, **kwargs):
 def make_module_from_function(funcobj):
     """Evaluates the local scope of a function, as if it was a module"""
     module = imp.new_module(funcobj.__name__)
-
-    args = _ra_attr(funcobj, 'args')
-    if args is None:
-        raise APIError("Function {} marked with @api.resource should take a "
-                       "``resource`` argument")
-
-    funclocals = trace_function(funcobj, *args)
+    scope = _ra_attr(funcobj, 'scope')
+    funclocals = trace_function(funcobj, scope)
     module.__dict__.update(funclocals)
     return module
 
@@ -76,6 +72,24 @@ def merge_pytestmark(module, parentobj):
         module.pytestmark = pytestmark
     except AttributeError:
         pass
+
+
+def add_hooks_to_module(module):
+    @pytest.fixture(autouse=True, scope='module')
+    def scope_around_all(request, req):
+        scope = _ra_attr(req.module, 'scope')
+        @request.addfinalizer
+        def fin():
+            scope.hooks.run('after_all')
+        scope.hooks.run('before_all')
+
+    @pytest.fixture(autouse=True, scope='function')
+    def api_before_each(request, req):
+        scope = _ra_attr(req.module, 'scope')
+        @request.addfinalizer
+        def fin():
+            scope.hooks.run('after_each', req)
+        scope.hooks.run('before_each', req)
 
 
 class RaResourceCollector(PyCollector):
@@ -129,6 +143,30 @@ def pytest_pycollect_makeitem(__multicall__, collector, name, obj):
 def _ra_attr(obj, name):
     return getattr(obj, '__ra__', {}).get(name, None)
 
+
 @pytest.fixture
 def req(request):
     return _ra_attr(request.function, 'req')
+
+
+@pytest.fixture(autouse=True, scope='session')
+def api_around_all(request):
+    @request.addfinalizer
+    def fin():
+        for api in API.instances:
+            api.hooks.run('after_all')
+    for api in API.instances:
+        api.hooks.run('before_all')
+
+
+@pytest.fixture(autouse=True, scope='function')
+def api_before_each(request, req):
+    @request.addfinalizer
+    def fin():
+        for api in API.instances:
+            if req.scope.api is api:
+                api.hooks.run('after_each', req)
+    for api in API.instances:
+        if req.scope.api is api:
+            api.hooks.run('before_each', req)
+

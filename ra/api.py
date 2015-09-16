@@ -12,11 +12,19 @@ from .raml_utils import (
 )
 from . import factory
 from .utils import path_from_uri
+from .hooks import Hooks
 
 
 class API(object):
     """Represents an API test suite.
     """
+    instances = []
+
+    def __new__(cls, *args, **kwargs):
+        instance = super(API, cls).__new__(cls)
+        cls.instances.append(instance)
+        return instance
+
     def __init__(self, raml_path_or_string, app, JSONEncoder=None):
         """Instantiates an API test suite for the given RAML and app.
         """
@@ -31,6 +39,7 @@ class API(object):
 
         self.JSONEncoder = JSONEncoder or json.JSONEncoder
 
+        self.hooks = Hooks()
         self.examples = self._define_factories()
 
     def _define_factories(self):
@@ -89,7 +98,7 @@ class API(object):
             # and store the argument that will be passed to it when it's called
             fn.__ra__ = {
                 'type': 'resource',
-                'args': [scope],
+                'scope': scope,
                 'path': full_path
             }
             fn.__test__ = False # this is a scope for tests, not a test
@@ -125,6 +134,8 @@ class ResourceScope(object):
         if parent is not None:
             self.uri_params = parent.uri_params
         self.uri_params.update(uri_params)
+
+        self.hooks = Hooks()
 
     @property
     def full_path(self):
@@ -240,6 +251,7 @@ class ResourceScope(object):
             req.data = data
             req.factory = factory
             req.raml = method
+            req.scope = self
 
             # pytest collector will see this tag and recognize the function
             # as a test function. The 'req' item will be returned by the
