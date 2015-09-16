@@ -306,13 +306,13 @@ class ResourceScope(object):
 
 
 class TestSuite(object):
-    """Used internally to log when tests are added for a method.
+    """Used internally to log when tests are added for a resource.
     """
     def __init__(self):
         self.tests = []
 
-    def add_test(self, test, method):
-        self.tests.append((test, method))
+    def add_test(self, test, resource_node):
+        self.tests.append((test, resource_node))
 
 
 def _parse_raml(raml_path_or_string):
