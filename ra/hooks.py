@@ -31,8 +31,6 @@ class Hooks(object):
         callbacks = self._hooks[name]
 
         for callback, conditions in callbacks:
-            # if callback.__name__ == 'create_user':
-            #     import pdb; pdb.set_trace()
             if req is not None:
                 only, exclude = conditions['only'], conditions['exclude']
                 method = req.raml.method.upper()
@@ -71,4 +69,19 @@ class Hooks(object):
 def _condition_match(pattern, method, path):
     """Check if method and path of request match condition pattern.
     """
-    return fnmatch.fnmatch("{} {}".format(method, path), pattern)
+    if ' ' in pattern:
+        pmethod, ppath = pattern.split(' ', 1)
+    elif pattern.startswith('/'):
+        pmethod, ppath = None, pattern
+    else:
+        pmethod, ppath = pattern, None
+
+    if pmethod:
+        if pmethod != method:
+            return False
+
+    if ppath:
+        if not fnmatch.fnmatch(path, ppath):
+            return False
+
+    return True

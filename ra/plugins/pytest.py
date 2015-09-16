@@ -84,7 +84,7 @@ def add_hooks_to_module(module):
         scope.hooks.run('before_all')
 
     @pytest.fixture(autouse=True, scope='function')
-    def api_before_each(request, req):
+    def scope_around_each(request, req):
         scope = _ra_attr(req.module, 'scope')
         @request.addfinalizer
         def fin():
