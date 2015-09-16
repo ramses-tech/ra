@@ -64,7 +64,7 @@ def users_resource(users):
         # ``req`` is a callable request object that is pre-bound to the app
         # that was passed into ``ra.api`` as well as the URI derived from
         # the resource (test scope) and method (test) decorators.
-        # 
+        #
         # This example uses the other scope-local fixture defined above.
         response = req()
         assert response.status_code == two_hundred
@@ -75,7 +75,7 @@ def users_resource(users):
         # By default, when JSON data needs to be sent in the request body,
         # Ra will look for an ``example`` property in the RAML definition
         # of the resource method's body and use that.
-        # 
+        #
         # As in WebTest request methods, you can specify the expected
         # status code(s), which will be test the response status.
         req(status=201)
@@ -103,7 +103,7 @@ def users_resource(users):
     def user_resource(user):
 
         # this resource will be requested at /users/{username}
-        # 
+        #
         # By default, Ra will look at the ``example`` property for
         # URI parameters as defined in the RAML, and fill the URI
         # template with that.
