@@ -110,6 +110,7 @@ class API(object):
                 'path': full_path
             }
             fn.__test__ = False # this is a scope for tests, not a test
+            fn.__name__ = 'resource:{}'.format(full_path)
             return fn
 
         return decorator

@@ -31,8 +31,6 @@ class RAMLValidator(object):
             return # RAML headers are optional
         else:
             raml_headers_raw = list(self.raml_response.headers.values())
-        print("validating response body: {}".format(self.response.headers))
-        print("against raml headers: {}".format(raml_headers_raw))
 
         raml_headers = {header.name: dict(header.raw[header.name])
                         for header in raml_headers_raw}
