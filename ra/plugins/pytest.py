@@ -92,14 +92,14 @@ def add_hooks_to_module(module):
         scope.hooks.run('before_each', req)
 
 
-class RaResourceCollector(PyCollector):
+class ResourceScopeCollector(PyCollector):
     def __init__(self, funcobj, parent):
-        super(RaResourceCollector, self).__init__(funcobj.__name__, parent)
+        super(ResourceScopeCollector, self).__init__(funcobj.__name__, parent)
         self.funcobj = funcobj
 
     def collect(self):
         self.session._fixturemanager.parsefactories(self)
-        return super(RaResourceCollector, self).collect()
+        return super(ResourceScopeCollector, self).collect()
 
     def _getobj(self):
         return self._memoizedcall('_obj', self._importtestmodule)
@@ -135,7 +135,7 @@ class RaResourceCollector(PyCollector):
 def pytest_pycollect_makeitem(__multicall__, collector, name, obj):
     if isinstance(obj, types.FunctionType):
         if _ra_attr(obj, 'type')  == 'resource':
-            return RaResourceCollector(obj, collector)
+            return ResourceScopeCollector(obj, collector)
 
     return __multicall__.execute()
 
