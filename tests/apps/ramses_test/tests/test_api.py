@@ -22,6 +22,8 @@ def delete_resources():
     Profile._delete_many(Profile.get_collection())
     Story._delete_many(Story.get_collection())
     User._delete_many(User.get_collection())
+    import transaction
+    transaction.commit()
 
 
 @api.hooks.before_each(exclude=['POST /users'])
@@ -29,6 +31,12 @@ def create_user():
     User(**api.examples.build('user')).save()
     # XXX: it takes some time for the object to be propagated to ES.
     # This is not ideal at all.
+    import time; time.sleep(2)
+
+
+@api.hooks.before_each(only=['PATCH /users/{username}/profile'])
+def create_profile():
+    Profile(**api.examples.build('user.profile', user_id='joe')).save()
     import time; time.sleep(2)
 
 
