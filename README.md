@@ -28,6 +28,6 @@ Ra was the god of the sun, the most important god in ancient Egypt.
     $ py.test
 ```
 
-See the docs in `docs/`, and the `api.raml` and `tests/test\_api.py` in
-`tests/apps/ramses\_test`
+See the docs in `docs/`, and the `api.raml` and `tests/test_api.py` in
+`tests/apps/ramses_test`
 
