@@ -6,7 +6,7 @@ It can be used with pytest and webtest to write functional tests for
 APIs a natural way that mirrors the structure of the RAML file.
 
 Ra also provides default automatic testing of resources defined in the
-RAML (_TODO_: pending).
+RAML to validate responses.
 
 """
 from .api import APIError

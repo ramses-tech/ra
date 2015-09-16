@@ -219,7 +219,9 @@ class ResourceScope(object):
                             ``headers``, ``content_type``, etc). You can use
                             the ``data`` keyword to pass request body data
                             that should be encoded, or ``body`` to pass a raw
-                            body string, and ``query_params`` to pass
+                            body string, or ``factory`` to pass a factory to
+                            use to create the body data for this test.  You
+                            can also use ``query_params`` to pass
                             querystring parameters as a dict.
         """
         verb = verb.upper()
