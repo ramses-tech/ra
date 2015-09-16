@@ -47,7 +47,7 @@ class ResourceNode(wrapt.ObjectProxy):
         body definition in the RAML.
         """
         try:
-            example = self.body[self.content_type].example
+            example = self.body['application/json'].example
         except (KeyError, AttributeError):
             return None
         return lambda: example

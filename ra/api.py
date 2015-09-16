@@ -137,25 +137,19 @@ class ResourceScope(object):
     """
     def __init__(self, path, api, factory=None, parent=None, **uri_params):
         self.path = resource_full_path(path, parent)
-        self.name = resource_name_from_path(path)
+        self.name = resource_name_from_path(self.path)
         self.api = api
         self.app = api.app
-        self.parent = parent
         self._factory = factory
         self.raml_methods = self.api.raml.resources[self.path]
+        self.uri_params = uri_params
+        self.hooks = Hooks()
 
         RequestClass = self.api.RequestClass
         # if it looks like a webob request class, treat it like one
         self._request_factory = (RequestClass.blank
                                 if getattr(RequestClass, 'blank', None)
                                 else RequestClass)
-
-        self.uri_params = {}
-        if parent is not None:
-            self.uri_params = parent.uri_params
-        self.uri_params.update(uri_params)
-
-        self.hooks = Hooks()
 
     @property
     def full_path(self):
@@ -201,12 +195,6 @@ class ResourceScope(object):
         For example, for either a "/users" or a "/users/{username}" resource,
         this will look for the POST body example value on "/users".
         """
-        if self.is_dynamic:
-            if self.parent is None:
-                return None
-            else:
-                return self.parent.factory
-
         return self.api.examples.get_factory(self.name)
 
     def resource(self, path, factory=None, **uri_params):
@@ -263,8 +251,9 @@ class ResourceScope(object):
                     json.dumps(data, cls=self.api.JSONEncoder),
                     encoding='utf-8')
 
-        url, query_string = urllib.parse.urlencode(self.resolved_path,
-                                                   query_parmas)
+        url, query_string = merge_query_params(self.resolved_path,
+                                               query_params or {})
+
         if not query_string:
             query_string = req_params.pop(query_string, '')
 

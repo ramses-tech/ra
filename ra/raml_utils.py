@@ -32,12 +32,20 @@ def resource_name_from_path(path, singularize=True):
 
 
 def uri_args_from_example(resource_node):
+    """Recursively determine example values for any URI args
+    in the resource path.
+    """
+    uri_args = {}
+    if resource_node.parent:
+        uri_args = uri_args_from_example(resource_node.parent)
+
     if resource_node.uri_params is None:
-        return {}
-    params = {}
+        return uri_args
+
     for name, param in six.iteritems(resource_node.uri_params):
-        params[name] = param.example
-    return params
+        uri_args[name] = param.example
+
+    return uri_args
 
 
 def resource_full_path(path, parent=None):

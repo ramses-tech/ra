@@ -3,7 +3,13 @@ class Examples(object):
         self.factories = {}
 
     def make_factory(self, resource_name, example):
-        self.factories[resource_name] = lambda: example
+        def factory(**params):
+            if not example:
+                return {}
+            obj = example.copy()
+            obj.update(params)
+            return obj
+        self.factories[resource_name] = factory
 
     def get_factory(self, resource_name):
         return self.factories[resource_name]

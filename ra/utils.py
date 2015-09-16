@@ -117,6 +117,7 @@ def merge_query_params(url, params):
     parameters, returning a 2-tuple of a clean url and a separated
     querystring.
     """
+    qs = str('')
     if params:
         if not isinstance(params, six.string_types):
             params = urlencode(params, doseq=True)
@@ -127,9 +128,7 @@ def merge_query_params(url, params):
             url += params
         if str('?') in url:
             url, qs = url.split(str('?'), 1)
-        else:
-            qs = str('')
-        return url, qs
+    return url, qs
 
 
 INVALID_IDENTIFIER_CHARS = re.compile(r'[^a-zA-Z_]+')
