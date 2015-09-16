@@ -3,27 +3,30 @@ _ define Ra tests DSL
   x testing an API
   x testing a resource+method
   x setting factories
-  _ adding hooks
-_ parse RAML and determine which tests to run for autotest
+  x adding hooks
+x parse RAML and generate autotests
   - test HEAD /collection if defined
   - test POST /collection
   - test GET /collection
   - ...
   - for each:
-    - test body: if body is defined for status code/media type, check against
+    x test body: if body is defined for status code/media type, check against
       schema
-    - test headers: if headers are defined, test headers
-    - test query strings: try allowed values in querystrings
+    x test headers: if headers are defined, test headers
+    _ test query strings: try allowed values in querystrings
 x collect custom tests
 x make pytest plugin so tests are collected by pytest
 x make a test ramses app to test everything out
 x support factories for objects
 x use examples in RAML as default values
-_ add hooks to autotests/all tests matching a pattern (per resource or method)
+x add hooks to autotests/all tests matching a pattern (per resource or method)
 _ write unit tests for Ra
+_ clean up old code
 _ documentation
 _ test ramses-example
 _ better declarative factories for objects
+_ better database management around tests (memory db or transactional)
+_ resolve issues with ES bulk indexes
 
 _ (maybe) custom tests with no special request params (headers, etc) should
   override auto tests?

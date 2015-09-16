@@ -2,7 +2,7 @@ import imp
 import sys
 import types
 import pytest
-from _pytest.python import PyCollector
+from _pytest.python import PyCollector, Module
 
 from .. import APIError
 from ..api import API
@@ -132,10 +132,41 @@ class ResourceScopeCollector(PyCollector):
                                 repr(self.funcobj.__name__))
 
 
+class AutotestCollector(PyCollector):
+    def __init__(self, module, parent):
+        super(AutotestCollector, self).__init__(module.__name__+'.py', parent)
+        self._module = module
+
+    def collect(self):
+        self.session._fixturemanager.parsefactories(self)
+        return super(AutotestCollector, self).collect()
+
+    def _getobj(self):
+        return self._module
+
+    def funcnamefilter(self, name):
+        """Treat all nested functions as tests, without requiring the 'test_'
+        prefix, unless they begin with an underscore.
+
+        Functions marked as pytest fixtures should already be ignored.
+        """
+        return not name.startswith('_')
+
+    def classnamefilter(self, name):
+        """Don't allow test classes"""
+        return False
+
+    def __repr__(self):
+        return "<{} {}>".format(self.__class__.__name__,
+                                repr(self._module.__name__))
+
+
 def pytest_pycollect_makeitem(__multicall__, collector, name, obj):
     if isinstance(obj, types.FunctionType):
         if _ra_attr(obj, 'type')  == 'resource':
             return ResourceScopeCollector(obj, collector)
+        elif _ra_attr(obj, 'type') == 'autotest':
+            return AutotestCollector(obj(), collector)
 
     return __multicall__.execute()
 

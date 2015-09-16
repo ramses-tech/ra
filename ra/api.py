@@ -12,7 +12,12 @@ from .raml_utils import (
     resource_full_path,
 )
 from . import factory
-from .utils import path_from_uri, merge_query_params
+from .utils import (
+    path_from_uri,
+    merge_query_params,
+    path_to_identifier,
+    path_parent,
+)
 from .hooks import Hooks
 from .validate import RAMLValidator
 
@@ -108,6 +113,18 @@ class API(object):
             return fn
 
         return decorator
+
+    def autotest(self, override=False):
+        def _autotest():
+            autotest_module = Autotest(self, override=override).generate()
+            return autotest_module
+        _autotest.__ra__ = { 'type': 'autotest' }
+
+        import sys
+        frame = sys._getframe(1)
+
+        # tag the module for autotests
+        frame.f_locals['__ra__'] = _autotest
 
 
 class ResourceScope(object):
@@ -323,6 +340,12 @@ class TestSuite(object):
     def add_test(self, test, resource_node):
         self.tests.append((test, resource_node))
 
+    def test_exists(self, method, path):
+        for test, resource_node in self.tests:
+            if resource_node.method == method and resource_node.path == path:
+                return True
+        return False
+
 
 def _parse_raml(raml_path_or_string):
     "Returns the RAML file path (or None if arg is a string) and parsed RAML."
@@ -388,6 +411,34 @@ def make_request_class(app, base=None):
         })
 
     return RequestClass
+
+
+class Autotest(object):
+    def __init__(self, api, override=False):
+        self.api = api
+        self.resources = api.raml.resources
+        self.test_suite = api.test_suite
+        self.override = override
+
+    def generate(self):
+        scopes = dict(self._genscope(path, methods, override=self.override)
+                      for path, methods in six.iteritems(self.resources))
+        import imp
+        module = imp.new_module("autotests")
+        module.__dict__.update(scopes)
+        return module
+
+    def _genscope(self, path, methods, override=False):
+        @self.api.resource(path)
+        def _autoresource(resource):
+            for method in methods:
+                if override and self.test_suite.test_exists(method, path):
+                    continue
+                method = method.lower()
+                exec("@resource.{method}\n"
+                     "def {method}(req): req()".format(method=method))
+        _autoresource.__name__ = "autotest:" + path
+        return (path_to_identifier(path), _autoresource)
 
 
 class APIError(Exception): pass

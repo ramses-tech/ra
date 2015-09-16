@@ -14,10 +14,12 @@ api = ra.api(ramlfile, testapp)
 
 User = ramses.models.get_existing_model('User')
 Story = ramses.models.get_existing_model('Story')
+Profile = ramses.models.get_existing_model('Profile')
 
 
 @api.hooks.before_each
 def delete_resources():
+    Profile._delete_many(Profile.get_collection())
     Story._delete_many(Story.get_collection())
     User._delete_many(User.get_collection())
 
@@ -32,7 +34,8 @@ def create_user():
 
 @api.hooks.before_each(only=['/stories*'], exclude=['POST'])
 def create_story():
-    Story(**api.examples.build('story')).save()
+    story = Story(**api.examples.build('story', id=1)).save()
+    import time; time.sleep(2)
 
 @api.hooks.before_each
 def commit():
@@ -110,3 +113,16 @@ def users_resource(users):
             # This is equivalent to the default test for a resource
             # and method:
             req()
+
+
+@api.resource('/stories')
+def stories_resource(stories):
+
+    @stories.resource('/{id}')
+    def story_resource(story):
+
+        @story.get
+        def get(req):
+            req()
+
+api.autotest()

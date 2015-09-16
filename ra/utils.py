@@ -132,6 +132,17 @@ def merge_query_params(url, params):
         return url, qs
 
 
+INVALID_IDENTIFIER_CHARS = re.compile(r'[^a-zA-Z_]+')
+def path_to_identifier(path):
+    "Convert a URI path to a valid python identifier"
+    return INVALID_IDENTIFIER_CHARS.sub('_', path).strip('_')
+
+
+def path_parent(path):
+    "Drop the last segment of a path to try to find a parent"
+    return '/'.join(path.split('/')[:-1])
+
+
 # Used by DynamicResourceTester to generate its base url
 # by making a POST to the parent resource and checking the
 # Location header (url arg) against the resource's uri as
