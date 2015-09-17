@@ -127,9 +127,9 @@ decorator:
     def get_text(req):
         req()
 
-Or pass them directly into ``req()``. You can also pass which status
-codes are considered a success (default is 2xx/3xx status codes, this is
-standard WebTest):
+Or pass request parameters directly into ``req()``,. You can also pass which
+status codes are considered a success (default is 2xx/3xx status codes, this
+is standard WebTest):
 
 .. code-block:: python
 
@@ -138,7 +138,8 @@ standard WebTest):
         req(content_type='text/plain', status=(200, 404))
 
 You can also override the resource scope's factory declaration
-(or the default RAML example factories) on individual tests:
+(or the default RAML example factories) on individual tests. The
+factory generates request data which is encoded as a JSON body:
 
 .. code-block:: python
 
@@ -148,6 +149,13 @@ You can also override the resource scope's factory declaration
         @users.post(factory=users_post_factory)
         def post_with_my_factory(req):
             assert req.factory == users_post_factory
+
+            # factory is used to generate data (an object)
+            assert req.data == users_post_factory()
+
+            # data is encoded to body as a JSON bytestring
+            import json
+            assert req.body == bytes(json.dumps(req.data, cls=req.JSONEncoder))
             req()
 
 By default, responses are validated against the RAML definition,

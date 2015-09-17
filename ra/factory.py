@@ -12,7 +12,7 @@ class Examples(object):
         self.factories[resource_name] = factory
 
     def get_factory(self, resource_name):
-        return self.factories[resource_name]
+        return self.factories.get(resource_name)
 
     def build(self, resource_name, **kwargs):
         return self.factories[resource_name](**kwargs)

@@ -137,7 +137,7 @@ class ResourceScope(object):
         self.name = raml.resource_name_from_path(self.path)
         self.api = api
         self.app = api.app
-        self._factory = factory
+        self.factory = factory
         self.raml_methods = self.api.raml.resources[self.path]
         self.uri_params = uri_params
         self.hooks = Hooks()
@@ -178,21 +178,6 @@ class ResourceScope(object):
     def resolved_path(self):
         "Shortcut to resolve_path called with no arguments."
         return self.resolve_path()
-
-    @property
-    def factory(self):
-        """Returns the default resource factory for generating request body
-        data.
-
-        The default factory looks for the example body property in the RAML
-        definition for the POST method on this resource (or in the case of
-        a dynamic resource, this resource's static parent which represents
-        the collection).
-
-        For example, for either a "/users" or a "/users/{username}" resource,
-        this will look for the POST body example value on "/users".
-        """
-        return self.api.examples.get_factory(self.name)
 
     def resource(self, path, factory=None, **uri_params):
         """Declare a nested resource scope under this resource scope.
@@ -237,18 +222,15 @@ class ResourceScope(object):
 
         if body is None:
             if data is None:
+                examples = self.api.examples
                 factory = (factory or
-                           (method.example_factory if method else None) or
                            self.factory or
+                           examples.get_factory(' '.join([verb, self.path])) or
+                           examples.get_factory(self.name) or
                            None)
 
                 if factory is not None:
                     data = factory()
-
-            if data is not None:
-                body = six.binary_type(
-                    json.dumps(data, cls=self.api.JSONEncoder),
-                    encoding='utf-8')
 
         url, query_string = merge_query_params(self.resolved_path,
                                                query_params or {})
@@ -259,13 +241,18 @@ class ResourceScope(object):
         def decorator(fn):
             req = self._request_factory(url,
                                         method=verb,
-                                        body=body,
                                         query_string=query_string,
                                         content_type='application/json',
                                         **req_params)
 
-            req.data = data
             req.factory = factory
+            req.data = data
+            req.body = body
+            req.JSONEncoder = self.api.JSONEncoder
+
+            if body is None:
+                req.encode_data()
+
             req.raml = method
             req.scope = self
 
@@ -389,12 +376,23 @@ def make_request_class(app, base=None):
             RAMLValidator(resp, self.raml).validate(validate)
         return resp
 
+    def encode_data(self, JSONEncoder=None):
+        if JSONEncoder is None:
+            JSONEncoder = self.JSONEncoder
+        self.body = six.binary_type(json.dumps(self.data, cls=JSONEncoder),
+                                    encoding='utf-8')
+
     RequestClass = type(
         'Request',
         (webob.request.BaseRequest,),
         {
+            'data': None,
+            'factory': None,
             'raml': None,
+            'scope': None,
+            'JSONEncoder': None,
             '__call__': __call__,
+            'encode_data': encode_data,
             'ResponseClass': ResponseClass
         })
 

@@ -119,17 +119,6 @@ class ResourceNode(wrapt.ObjectProxy):
                                                in (wrapped.responses or [])),
                                                by='code')
 
-    @property
-    def example_factory(self):
-        """Factory that returns the example value from the method's
-        body definition in the RAML.
-        """
-        try:
-            example = self.body['application/json'].example
-        except (KeyError, AttributeError):
-            return None
-        return lambda: example
-
 
 class Response(wrapt.ObjectProxy):
     """Wraps a ``ramlfications.raml.Response`` to map headers and body by
