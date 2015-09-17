@@ -1,17 +1,33 @@
-Example usage
+Full Example
 =============
 
-Example usage::
+Example usage:
+
+.. code-block:: python
 
     # in tests/test_api.py:
     import os
     import ra
     import webtest
+    import myapp # wsgi app
 
     appdir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
     ramlfile = os.path.join(appdir, 'api.raml')
     testapp = webtest.TestApp('config:test.ini', relative_to=appdir)
     api = ra.api(ramlfile, testapp)
+
+    @api.hooks.before_each
+    def clear_db():
+      # clear test db before each test
+      myapp.clear_db()
+
+
+    @api.hooks.before_each(exclude=['POST /users'])
+    def create_user():
+        # before every test except POST /users,
+        # build a User (model object) from a the 'user' example,
+        # found in the RAML definition for POST /users
+        User(**api.examples.build('user')).save()
 
     # defining a resource scope:
 

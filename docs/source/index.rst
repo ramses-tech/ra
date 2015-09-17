@@ -28,4 +28,5 @@ Table of Contents
    hooks
    autotest
    selecting_tests
+   full_example
    changelog
