@@ -3,7 +3,7 @@ import six
 import simplejson as json
 
 from . import raml
-from . import factory
+from .factory import Examples
 from .utils import path_from_uri, merge_query_params, path_to_identifier
 from .hooks import Hooks
 from .validate import RAMLValidator
@@ -37,17 +37,26 @@ class APISuite(object):
         self.examples = self._define_factories()
 
     def _define_factories(self):
-        examples = factory.Examples()
-        for resources in six.itervalues(self.raml.resources):
-            try:
-                post_resource = resources['POST']
-                example = post_resource.body['application/json'].example
-            except KeyError:
-                continue
-            else:
-                resource_name = raml.resource_name_from_path(post_resource.path)
-                examples.make_factory(resource_name, example)
+        """Create factories for example body values.
 
+        Returns an instance of ``ra.factory.Examples`` with factories
+        stored for each route with an example declared. The POST body
+        factory for each collection is also keyed by resource name,
+        e.g. "POST /users/{username}/profile" is also keyed as "user.profile".
+        """
+        examples = Examples()
+        for path, nodes in six.iteritems(self.raml.resources):
+            for method, node in six.iteritems(nodes):
+                try:
+                    example = node.body['application/json'].example
+                except KeyError:
+                    continue
+                else:
+                    route = "{} {}".format(method, path)
+                    examples.make_factory(route, example)
+                    if method == 'POST':
+                        resource_name = raml.resource_name_from_path(path)
+                        examples.make_factory(resource_name, example)
         return examples
 
     def resource(self, path, factory=None, **uri_params):
