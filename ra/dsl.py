@@ -227,8 +227,8 @@ class ResourceScope(object):
             method = self.raml_methods[verb]
         except KeyError:
             warnings.warn("Tried to add test for undeclared method "
-                          "{} on {} (RAML={}".format(verb, self.path,
-                                                     self.api.raml_path))
+                          "{} on {} (RAML={})".format(verb, self.path,
+                                                      self.api.raml_path))
 
         factory = req_params.pop('factory', None)
         data = req_params.pop('data', None)
