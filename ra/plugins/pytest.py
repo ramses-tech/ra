@@ -84,11 +84,14 @@ def add_hooks_to_module(module):
 
     @pytest.fixture(autouse=True, scope='function')
     def scope_around_each(request, req):
+        # yes, that's 3 "requests" - request is pytest context, req
+        # is a request object, and request_ is like "GET /foo"
         scope = _ra_attr(req.module, 'scope')
+        resource_node = req.raml if req else None
         @request.addfinalizer
         def fin():
-            scope.hooks.run('after_each', req)
-        scope.hooks.run('before_each', req)
+            scope.hooks.run('after_each', resource_node)
+        scope.hooks.run('before_each', resource_node)
 
 
 class ResourceScopeCollector(PyCollector):
@@ -193,12 +196,13 @@ def api_around_all(request):
 
 @pytest.fixture(autouse=True, scope='function')
 def api_before_each(request, req):
+    resource_node = req.raml if req else None
     @request.addfinalizer
     def fin():
         for api in APISuite.instances:
             if req.scope.api is api:
-                api.hooks.run('after_each', req)
+                api.hooks.run('after_each', resource_node)
     for api in APISuite.instances:
         if req.scope.api is api:
-            api.hooks.run('before_each', req)
+            api.hooks.run('before_each', resource_node)
 

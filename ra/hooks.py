@@ -27,30 +27,39 @@ class Hooks(object):
     def __init__(self):
         self._hooks = collections.defaultdict(list)
 
-    def run(self, name, req=None, *args, **kwargs):
+    def run(self, name, node=None):
+        """Run callbacks for hook :name:.
+
+        :param name: hook name
+        :param node: expects a resource_node (or any object with method
+                     and path attributes for the current test)
+        """
         callbacks = self._hooks[name]
 
         for callback, conditions in callbacks:
-            if req is not None:
-                only, exclude = conditions['only'], conditions['exclude']
-                method = req.raml.method.upper()
-                path = req.raml.path
-                if only:
+            only, exclude = conditions['only'], conditions['exclude']
+
+            if only:
+                if node is None:
+                    continue
+                else:
                     ok = False
                     for pattern in only:
-                        if _condition_match(pattern, method, path):
+                        if _condition_match(pattern, node.method, node.path):
                             ok = True
+                            break
                     if not ok:
                         continue
-                if exclude:
+            if exclude:
+                if node is not None:
                     ok = True
                     for pattern in exclude:
-                        if _condition_match(pattern, method, path):
+                        if _condition_match(pattern, node.method, node.path):
                             ok = False
                             break
                     if not ok:
                         continue
-            callback(*args, **kwargs)
+            callback()
 
     def _add_callback(self, name, fn=None, only=None, exclude=None):
         def decorator(_fn):
@@ -77,7 +86,7 @@ def _condition_match(pattern, method, path):
         pmethod, ppath = pattern, None
 
     if pmethod:
-        if pmethod != method:
+        if pmethod.upper() != method.upper():
             return False
 
     if ppath:
