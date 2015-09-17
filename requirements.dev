@@ -4,6 +4,7 @@ releases
 pytest
 pytest-cov
 pytest-mock
+wrapt
 
 -e .
 -e ./tests/apps/ramses_test
