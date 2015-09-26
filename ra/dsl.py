@@ -376,8 +376,8 @@ def make_request_class(app, base=None):
     def encode_data(self, JSONEncoder=None):
         if JSONEncoder is None:
             JSONEncoder = self.JSONEncoder
-        self.body = six.binary_type(json.dumps(self.data, cls=JSONEncoder),
-                                    encoding='utf-8')
+        self.body = six.binary_type.encode(
+            json.dumps(self.data, cls=JSONEncoder), encoding='utf-8')
 
     RequestClass = type(
         'Request',
