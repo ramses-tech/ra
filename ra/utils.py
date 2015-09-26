@@ -50,3 +50,8 @@ INVALID_IDENTIFIER_CHARS = re.compile(r'[^a-zA-Z_]+')
 def path_to_identifier(path):
     "Convert a URI path to a valid python identifier"
     return INVALID_IDENTIFIER_CHARS.sub('_', path).strip('_')
+
+
+def caller_scope(back=1):
+    import sys
+    return sys._getframe(back + 1).f_locals

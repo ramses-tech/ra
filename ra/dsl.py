@@ -1,10 +1,16 @@
+import inspect
 import warnings
 import six
 import simplejson as json
 
-from . import raml
+from . import raml, marks
 from .factory import Examples
-from .utils import path_from_uri, merge_query_params, path_to_identifier
+from .utils import (
+    path_from_uri,
+    merge_query_params,
+    path_to_identifier,
+    caller_scope,
+)
 from .hooks import Hooks
 from .validate import RAMLValidator
 
@@ -92,36 +98,25 @@ class APISuite(object):
             warnings.warn("Declaring resource scope {}: resource not declared "
                           "in RAML ({})".format(full_path, self.raml_path))
 
-        scope = ResourceScope(path, self,
-                              factory=factory, parent=parent,
-                              **uri_args)
-        self.resource_scopes.append(scope)
-
         def decorator(fn):
+            scope = ResourceScope(fn, path, self,
+                                  factory=factory, parent=parent,
+                                  **uri_args)
+            self.resource_scopes.append(scope)
+
             # tag this function as a resource scope for the pytest collector
             # and store the argument that will be passed to it when it's called
-            fn.__ra__ = {
-                'type': 'resource',
-                'scope': scope,
-                'path': full_path
-            }
+            marks.mark(fn, type='resource', scope=scope, path=full_path)
             fn.__test__ = False # this is a scope for tests, not a test
             fn.__name__ = full_path
+
             return fn
 
         return decorator
 
     def autotest(self, override=False):
-        def _autotest():
-            autotest_module = Autotest(self, override=override).generate()
-            return autotest_module
-        _autotest.__ra__ = { 'type': 'autotest' }
-
-        import sys
-        frame = sys._getframe(1)
-
-        # tag the module for autotests
-        frame.f_locals['__ra__'] = _autotest
+        autotest_module = Autotest(self, override=override).generate()
+        marks.set(caller_scope(), 'autotest', autotest_module)
 
 
 class ResourceScope(object):
@@ -132,7 +127,9 @@ class ResourceScope(object):
     including resolving URI parameters. They also provide factories for
     generating data for request bodies.
     """
-    def __init__(self, path, api, factory=None, parent=None, **uri_params):
+    def __init__(self, scope_fn, path, api,
+                 factory=None, parent=None, **uri_params):
+        self.scope_fn = scope_fn
         self.path = raml.resource_full_path(path, parent)
         self.name = raml.resource_name_from_path(self.path)
         self.api = api
@@ -259,7 +256,7 @@ class ResourceScope(object):
             # pytest collector will see this tag and recognize the function
             # as a test function. The 'req' item will be returned by the
             # 'req' fixture.
-            fn.__ra__ = { 'type': 'test', 'req': req }
+            marks.mark(fn, type='test', req=req)
 
             self.api.test_suite.add_test(fn, method)
 

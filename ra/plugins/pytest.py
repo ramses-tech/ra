@@ -5,6 +5,7 @@ import pytest
 from _pytest.python import PyCollector, Module
 
 from ..dsl import APISuite
+from .. import marks
 
 
 """pytest plugin for Ra.
@@ -36,7 +37,7 @@ def trace_function(funcobj, *args, **kwargs):
 def make_module_from_function(funcobj):
     """Evaluates the local scope of a function, as if it was a module"""
     module = imp.new_module(funcobj.__name__)
-    scope = _ra_attr(funcobj, 'scope')
+    scope = marks.get(funcobj, 'scope')
     funclocals = trace_function(funcobj, scope)
     module.__dict__.update(funclocals)
     return module
@@ -75,8 +76,10 @@ def merge_pytestmark(module, parentobj):
 
 def add_hooks_to_module(module):
     @pytest.fixture(autouse=True, scope='module')
-    def scope_around_all(request, req):
-        scope = _ra_attr(req.module, 'scope')
+    def scope_around_all(request):
+        scope = marks.get(request.module, 'scope')
+        if not scope:
+            return
         @request.addfinalizer
         def fin():
             scope.hooks.run('after_all')
@@ -84,10 +87,11 @@ def add_hooks_to_module(module):
 
     @pytest.fixture(autouse=True, scope='function')
     def scope_around_each(request, req):
-        # yes, that's 3 "requests" - request is pytest context, req
-        # is a request object, and request_ is like "GET /foo"
-        scope = _ra_attr(req.module, 'scope')
-        resource_node = req.raml if req else None
+        # note: request is pytest context, req is an http request object
+        scope = marks.get(request.module, 'scope')
+        if not scope or not req:
+            return
+        resource_node = req.raml
         @request.addfinalizer
         def fin():
             scope.hooks.run('after_each', resource_node)
@@ -167,25 +171,26 @@ class AutotestCollector(PyCollector):
 
 def pytest_pycollect_makeitem(__multicall__, collector, name, obj):
     if isinstance(obj, types.FunctionType):
-        if _ra_attr(obj, 'type')  == 'resource':
+        if marks.get(obj, 'type')  == 'resource':
             return ResourceScopeCollector(obj, collector)
-        elif _ra_attr(obj, 'type') == 'autotest':
-            return AutotestCollector(obj(), collector)
+    elif isinstance(obj, marks.Mark):
+        autotest = obj.get('autotest')
+        if autotest:
+            return AutotestCollector(autotest, collector)
 
     return __multicall__.execute()
 
 
-def _ra_attr(obj, name):
-    return getattr(obj, '__ra__', {}).get(name, None)
-
-
 @pytest.fixture
 def req(request):
-    return _ra_attr(request.function, 'req')
+    return marks.get(request.function, 'req')
 
 
 @pytest.fixture(autouse=True, scope='session')
 def api_around_all(request):
+    """Run API 'around all' hooks around the whole suite."""
+    if not req:
+        return
     @request.addfinalizer
     def fin():
         for api in APISuite.instances:
@@ -195,7 +200,13 @@ def api_around_all(request):
 
 
 @pytest.fixture(autouse=True, scope='function')
-def api_before_each(request, req):
+def api_around_each(request, req):
+    """Run API 'around each' hooks.
+
+    Does nothing if this isn't a Ra test (if req is None).
+    """
+    if not req:
+        return
     resource_node = req.raml if req else None
     @request.addfinalizer
     def fin():
