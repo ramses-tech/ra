@@ -169,7 +169,7 @@ class AutotestCollector(PyCollector):
                                 repr(self._module.__name__))
 
 
-def pytest_pycollect_makeitem(__multicall__, collector, name, obj):
+def pytest_pycollect_makeitem(collector, name, obj):
     if isinstance(obj, types.FunctionType):
         if marks.get(obj, 'type')  == 'resource':
             return ResourceScopeCollector(obj, collector)
@@ -177,8 +177,6 @@ def pytest_pycollect_makeitem(__multicall__, collector, name, obj):
         autotest = obj.get('autotest')
         if autotest:
             return AutotestCollector(autotest, collector)
-
-    return __multicall__.execute()
 
 
 @pytest.fixture
