@@ -4,6 +4,5 @@ releases
 pytest
 pytest-cov
 pytest-mock
-wrapt
 
 -e .
