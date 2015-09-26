@@ -1,4 +1,3 @@
-import inspect
 import warnings
 import six
 import simplejson as json
@@ -376,8 +375,9 @@ def make_request_class(app, base=None):
     def encode_data(self, JSONEncoder=None):
         if JSONEncoder is None:
             JSONEncoder = self.JSONEncoder
-        self.body = six.binary_type.encode(
-            json.dumps(self.data, cls=JSONEncoder), encoding='utf-8')
+        import codecs
+        self.body = codecs.encode(json.dumps(self.data, cls=JSONEncoder),
+                                  'utf-8')
 
     RequestClass = type(
         'Request',
@@ -423,6 +423,7 @@ class Autotest(object):
                 def test(req):
                     req()
                 test.__name__ = method
+                import inspect
                 inspect.currentframe().f_locals[method] = test
 
         return (path_to_identifier(path), _autoresource)
