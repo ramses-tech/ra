@@ -1,0 +1,24 @@
+#%RAML 0.8
+---
+title: Simple API
+baseUri: http://example.com/{version}
+version: 1
+mediaType: application/json
+
+/users:
+  get:
+    description: Get all users
+  post:
+    description: Create a user
+    body:
+      application/json:
+        example: |
+          { username: "earl" }
+  /{username}:
+    get:
+      description: Get a user
+    put:
+      description: Replace a user
+    delete:
+      description: Delete a user
+

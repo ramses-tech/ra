@@ -418,6 +418,11 @@ class Autotest(object):
                 if override and self.test_suite.test_exists(method, path):
                     continue
                 method = method.lower()
-                exec("@resource.{method}\n"
-                     "def {method}(req): req()".format(method=method))
+
+                @getattr(resource, method)
+                def test(req):
+                    req()
+                test.__name__ = method
+                inspect.currentframe().f_locals[method] = test
+
         return (path_to_identifier(path), _autoresource)
