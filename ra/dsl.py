@@ -96,6 +96,7 @@ class APISuite(object):
         else:
             warnings.warn("Declaring resource scope {}: resource not declared "
                           "in RAML ({})".format(full_path, self.raml_path))
+            uri_args = uri_params
 
         def decorator(fn):
             scope = ResourceScope(fn, path, self,
