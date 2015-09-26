@@ -55,6 +55,47 @@ This ensures that tests are isolated from one another, but still
 have access to the objects they expect (based on the examples in the
 RAML, for example).
 
+
+only and exclude
+----------------
+
+Hook decorators can optionally be called with the parameters
+``only`` and ``exclude``. These parameters each take an array
+of string patterns describing routes by HTTP method, path, or
+both. Path patterns can match routes with glob syntax.
+
+Patterns in ``exclude`` override patterns in ``only``.
+
+Some examples:
+
+.. code-block:: python
+
+    @api.hooks.before_each(only=['GET /users', 'POST /users'])
+    def before1():
+        # matches only tests for "GET /users" and "POST /users" exactly
+        pass
+
+    @api.hooks.before_each(exclude=['POST'])
+    def before2():
+        # matches all tests unless the method is POST
+        pass
+
+    @api.hooks.before_each(only=['/users'], exclude=['POST', 'PUT'])
+    def before3():
+        # matches tests for path "/users" unless method is POST or PUT
+        pass
+
+    @api.hooks.before_each(only=['/users/*'])
+    def before4():
+        # matches any path starting with "/users/" (doesn't match "/users")
+        pass
+
+    @api.hooks.before_each(only=['*/edit'])
+    def before5():
+        # matches any path ending with "/edit", e.g. "/posts/{id}/edit"
+        pass
+
+
 API hooks
 ---------
 
@@ -83,5 +124,5 @@ These hooks run before or after each test in the resource scope:
     - ``resource_scope.hooks.before_each``
     - ``resource_scope.hooks.after_each``
 
-Where ``resource_scope`` is the object passed into the resource scope
+Above, ``resource_scope`` is the object passed into the resource scope
 function (``users`` in the example above).
