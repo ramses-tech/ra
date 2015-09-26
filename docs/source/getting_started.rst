@@ -7,13 +7,6 @@ Install Ra with pip in your existing WSGI API project:
 
     $ pip install ra
 
-Though not required, Ra works best with apps wrapped by `WebTest
-<http://webtest.pythonpaste.org/>`_:
-
-.. code-block:: shell
-
-    $ pip install webtest
-
 
 Requirements
 ------------

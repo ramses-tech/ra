@@ -6,7 +6,7 @@ Source code:`<http://github.com/brandicted/ra>`_
 Ra is a test helper and pytest plugin for testing APIs defined by RAML
 files.
 
-It can be used with pytest and WebTest to write functional tests for
+It is used with pytest and WebTest to write functional tests for
 APIs a natural way that mirrors the structure of the RAML file.
 
 Ra also provides default automatic testing of resources defined in the

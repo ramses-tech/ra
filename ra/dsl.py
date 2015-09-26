@@ -34,7 +34,7 @@ class APISuite(object):
         self.path_prefix = path_from_uri(self.raml.base_uri)
         self.resource_scopes = []
 
-        self.RequestClass = make_request_class(app, self.raml)
+        self.RequestClass = make_request_class(app)
 
         self.JSONEncoder = JSONEncoder or json.JSONEncoder
 
@@ -352,19 +352,17 @@ def make_request_class(app, base=None):
                         object as a first positional argument, and accepts
                         request parameters as keyword args.
     :param base:        the base request class
-                        (default ``webob.request.BaseRequest``).
+                        (default ``webtest.TestRequest``).
 
     :return:    a new class for callable requests bound to :app: and pre-set
                 with :req_params:
     """
-    import webob
+    import webtest
 
-    try:
-        from webtest import TestResponse
-    except ImportError: # pragma: no cover
-        ResponseClass = base or webob.Response
-    else: # pragma: no cover
-        ResponseClass = TestResponse
+    if base is None:
+        base = webtest.TestRequest
+
+    ResponseClass = getattr(base, 'ResponseClass', webtest.TestResponse)
 
     def __call__(self, validate=True, **req_params):
         resp = app.request(self, **req_params)
@@ -381,7 +379,7 @@ def make_request_class(app, base=None):
 
     RequestClass = type(
         'Request',
-        (webob.request.BaseRequest,),
+        (base,),
         {
             'data': None,
             'factory': None,
