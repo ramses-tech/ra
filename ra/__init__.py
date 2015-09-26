@@ -9,7 +9,6 @@ Ra also provides default automatic testing of resources defined in the
 RAML to validate responses.
 
 """
-from . import raml
 from .dsl import APISuite
 
 
