@@ -22,11 +22,23 @@ Ra was the god of the sun, the most important god in ancient Egypt.
 
 ## Try it (dev)
 
+Run the test suite:
+
 ```bash
     $ pip install -r requirements.txt
-    $ cd tests/apps/ramses_test
     $ py.test
 ```
+
+Check out the example:
+
+```bash
+    $ cd examples/ramses-test
+    $ pip install -r requirements.txt
+    $ py.test
+```
+
+The example RAML at `examples/ramses-test/api.raml` and the test file
+`examples/ramses-test/tests/test_api.py` should be helpful to reference.
 
 See the docs in `docs/`, and the `api.raml` and `tests/test_api.py` in
 `tests/apps/ramses_test`
