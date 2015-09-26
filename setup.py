@@ -42,6 +42,6 @@ setup(name='ra',
       test_suite="ra",
       entry_points = {
           'pytest11': [
-              'ra = ra.plugins.pytest'
+              'ra = ra.plugins.pytest_'
           ]
       })
