@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 requires = ['pyramid']
 
-setup(name='ramses_test',
+setup(name='ramses-test',
     version='0.0.1',
     description='',
     long_description='',
