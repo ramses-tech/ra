@@ -6,8 +6,12 @@ class Examples(object):
         def factory(**params):
             if not example:
                 return {}
-            obj = example.copy()
-            obj.update(params)
+            try:
+                obj = example.copy()
+                obj.update(params)
+            except AttributeError:
+                raise ValueError("example failed to parse as JSON:\n\n"
+                                 "{}".format(example))
             return obj
         self.factories[resource_name] = factory
 
