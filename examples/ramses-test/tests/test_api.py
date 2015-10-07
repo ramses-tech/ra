@@ -86,7 +86,9 @@ def users_resource(users):
         #
         # As in WebTest request methods, you can specify the expected
         # status code(s), which will be test the response status.
-        req(status=201)
+        response = req(status=201)
+        # assert lowercase validator in schema is working:
+        assert response.json['email'] == 'joe@example.com'
 
     # defining a custom user factory; underscored functions are not
     # considered tests (but better to import factories from another module)

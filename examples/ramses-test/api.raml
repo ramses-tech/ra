@@ -61,10 +61,11 @@ traits:
     body:
       application/json:
         schema: !include schemas/user.json
+        # uppercase email so we can test lowercase validator
         example: |
           {
               "username": "joe",
-              "email": "joe@example.com",
+              "email": "JOE@example.com",
               "password": "v3rys3cr3t",
               "first_name": "Joe"
           }
