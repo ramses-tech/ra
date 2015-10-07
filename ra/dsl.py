@@ -424,5 +424,6 @@ class Autotest(object):
                 test.__name__ = method
                 import inspect
                 inspect.currentframe().f_locals[method] = test
+                del test
 
         return (path_to_identifier(path), _autoresource)
