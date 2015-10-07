@@ -1,13 +1,14 @@
-nefertari
-nefertari-sqla
-ramses
-pytest
-pytest-cov
-pytest-mock
-
 Paste==2.0.2
 pyramid==1.5.7
 waitress==0.8.9
+
+nefertari==0.5.1
+nefertari-sqla==0.3.3
+ramses==0.4.1
+
+pytest
+pytest-cov
+pytest-mock
 
 -e ../..
 -e .
