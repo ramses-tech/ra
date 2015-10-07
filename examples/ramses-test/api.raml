@@ -81,7 +81,7 @@ traits:
             type: string
             minLength: 7
             pattern: "http.*"
-            example: http://localhost:6543/v1/users/joe
+            example: http://localhost:6543/api/users/joe
 
   patch:
     description: Update multiple users
@@ -103,7 +103,7 @@ traits:
               {
                   "explanation": "",
                   "message": "Updated 2 User(s) objects",
-                  "request_url": "http://localhost:6543/v1/users?_limit=2",
+                  "request_url": "http://localhost:6543/api/users?_limit=2",
                   "status_code": 200,
                   "timestamp": "2015-09-11T03:14:20Z",
                   "title": "OK"
@@ -119,7 +119,7 @@ traits:
               {
                   "explanation": "",
                   "message": "Deleted 2 User(s) objects",
-                  "request_url": "http://localhost:6543/v1/users?_limit=2",
+                  "request_url": "http://localhost:6543/api/users?_limit=2",
                   "status_code": 200,
                   "timestamp": "2015-09-11T03:14:20Z",
                   "title": "OK"
@@ -364,7 +364,7 @@ traits:
               {
                   "explanation": "",
                   "message": "Updated 2 Story(s) objects",
-                  "request_url": "http://localhost:6543/v1/stories?owner_id=joe",
+                  "request_url": "http://localhost:6543/api/stories?owner_id=joe",
                   "status_code": 200,
                   "timestamp": "2015-09-11T03:14:20Z",
                   "title": "OK"
@@ -381,7 +381,7 @@ traits:
               {
                   "explanation": "",
                   "message": "Deleted 2 Story(s) objects",
-                  "request_url": "http://localhost:6543/v1/stories?_limit=2",
+                  "request_url": "http://localhost:6543/api/stories?_limit=2",
                   "status_code": 200,
                   "timestamp": "2015-09-11T03:14:20Z",
                   "title": "OK"
