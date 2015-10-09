@@ -1,4 +1,6 @@
-# ra
+# `Ra`
+[![Build Status](https://travis-ci.org/brandicted/ra.svg?branch=master)](https://travis-ci.org/brandicted/ra)
+[![Documentation](https://readthedocs.org/projects/ra/badge/?version=stable)](http://ra.readthedocs.org)
 
 Ra is a test suite generator and helper library for testing APIs described
 by [RAML](http://raml.org/) documents.
