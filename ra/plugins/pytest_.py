@@ -74,30 +74,6 @@ def merge_pytestmark(module, parentobj):
         pass
 
 
-def add_hooks_to_module(module):
-    @pytest.fixture(autouse=True, scope='module')
-    def scope_around_all(request):
-        scope = marks.get(request.module, 'scope')
-        if not scope:
-            return
-        @request.addfinalizer
-        def fin():
-            scope.hooks.run('after_all')
-        scope.hooks.run('before_all')
-
-    @pytest.fixture(autouse=True, scope='function')
-    def scope_around_each(request, req):
-        # note: request is pytest context, req is an http request object
-        scope = marks.get(request.module, 'scope')
-        if not scope or not req:
-            return
-        resource_node = req.raml
-        @request.addfinalizer
-        def fin():
-            scope.hooks.run('after_each', resource_node)
-        scope.hooks.run('before_each', resource_node)
-
-
 class ResourceScopeCollector(PyCollector):
     def __init__(self, funcobj, parent):
         super(ResourceScopeCollector, self).__init__(funcobj.__name__, parent)
@@ -184,34 +160,4 @@ def req(request):
     return marks.get(request.function, 'req')
 
 
-@pytest.fixture(autouse=True, scope='session')
-def api_around_all(request):
-    """Run API 'around all' hooks around the whole suite."""
-    if not req:
-        return
-    @request.addfinalizer
-    def fin():
-        for api in APISuite.instances:
-            api.hooks.run('after_all')
-    for api in APISuite.instances:
-        api.hooks.run('before_all')
-
-
-@pytest.fixture(autouse=True, scope='function')
-def api_around_each(request, req):
-    """Run API 'around each' hooks.
-
-    Does nothing if this isn't a Ra test (if req is None).
-    """
-    if not req:
-        return
-    resource_node = req.raml if req else None
-    @request.addfinalizer
-    def fin():
-        for api in APISuite.instances:
-            if req.scope.api is api:
-                api.hooks.run('after_each', resource_node)
-    for api in APISuite.instances:
-        if req.scope.api is api:
-            api.hooks.run('before_each', resource_node)
 

@@ -4,25 +4,18 @@ import simplejson as json
 
 from . import raml, marks
 from .factory import Examples
+from .request import make_request_class
 from .utils import (
     path_from_uri,
     merge_query_params,
     path_to_identifier,
     caller_scope,
 )
-from .hooks import Hooks
-from .validate import RAMLValidator
 
 
 class APISuite(object):
     """Represents an API test suite.
     """
-    instances = []
-
-    def __new__(cls, *args, **kwargs):
-        instance = super(APISuite, cls).__new__(cls)
-        cls.instances.append(instance)
-        return instance
 
     def __init__(self, raml_path_or_string, app, JSONEncoder=None):
         """Instantiates an API test suite for the given RAML and app.
@@ -38,7 +31,6 @@ class APISuite(object):
 
         self.JSONEncoder = JSONEncoder or json.JSONEncoder
 
-        self.hooks = Hooks()
         self.examples = self._define_factories()
 
     def _define_factories(self):
@@ -137,7 +129,6 @@ class ResourceScope(object):
         self.factory = factory
         self.raml_methods = self.api.raml.resources[self.path]
         self.uri_params = uri_params
-        self.hooks = Hooks()
 
         RequestClass = self.api.RequestClass
         # if it looks like a webob request class, treat it like one
@@ -328,71 +319,6 @@ def _parse_raml(raml_path_or_string):
     parsed_raml = raml.parse(raml_path_or_string)
 
     return raml_path, parsed_raml
-
-
-def make_request_class(app, base=None):
-    """Create a callable, app-bound request class from a base request class.
-
-    Request objects built from this class are passed to test functions.
-    The request object is callable with this signature:
-
-        req(validate=True, **req_params)
-
-    When called, a request is made against app, passing the object as
-    the request to send, applying any additional request parameters passed.
-    It also takes a ``validate`` keyword to determine if RAML validation
-    assertions should be automatically made on the response before
-    returning it (default is True).
-
-    The request object expects to be assigned a ``raml`` attribute with
-    the ra.raml.ResourceNode to validate against as the value.
-
-    :param app:         the app we want to make requests to, generally an
-                        instance of ``webtest.TestApp`` but can be anything
-                        that responds to request() taking a webob-like request
-                        object as a first positional argument, and accepts
-                        request parameters as keyword args.
-    :param base:        the base request class
-                        (default ``webtest.TestRequest``).
-
-    :return:    a new class for callable requests bound to :app: and pre-set
-                with :req_params:
-    """
-    import webtest
-
-    if base is None:
-        base = webtest.TestRequest
-
-    ResponseClass = getattr(base, 'ResponseClass', webtest.TestResponse)
-
-    def __call__(self, validate=True, **req_params):
-        resp = app.request(self, **req_params)
-        if validate:
-            RAMLValidator(resp, self.raml).validate(validate)
-        return resp
-
-    def encode_data(self, JSONEncoder=None):
-        if JSONEncoder is None:
-            JSONEncoder = self.JSONEncoder
-        import codecs
-        self.body = codecs.encode(json.dumps(self.data, cls=JSONEncoder),
-                                  'utf-8')
-
-    RequestClass = type(
-        'Request',
-        (base,),
-        {
-            'data': None,
-            'factory': None,
-            'raml': None,
-            'scope': None,
-            'JSONEncoder': None,
-            '__call__': __call__,
-            'encode_data': encode_data,
-            'ResponseClass': ResponseClass
-        })
-
-    return RequestClass
 
 
 class Autotest(object):

@@ -1,5 +1,6 @@
 import random
 import re
+import six
 from string import ascii_letters
 
 
@@ -55,3 +56,18 @@ def path_to_identifier(path):
 def caller_scope(back=1):
     import sys
     return sys._getframe(back + 1).f_locals
+
+
+def listify(x):
+    """Wrap an item in a list if it's not a list already.
+
+    Passing None returns an empty list.
+    """
+    if x is None:
+        return []
+    if isinstance(x, six.string_types):
+        return [x]
+    try:
+        return list(iter(x))
+    except TypeError:
+        return [x]
