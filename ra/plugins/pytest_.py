@@ -160,4 +160,16 @@ def req(request):
     return marks.get(request.function, 'req')
 
 
+@pytest.fixture
+def api(req):
+    return req.scope.api
 
+
+@pytest.fixture
+def examples(api):
+    return api.examples
+
+
+@pytest.fixture
+def app(api):
+    return api.app
