@@ -56,7 +56,7 @@ class APISuite(object):
                         examples.make_factory(resource_name, example)
         return examples
 
-    def resource(self, path, factory=None, **uri_params):
+    def resource(self, path, factory=None, parent=None, **uri_params):
         """Decorator for declaring a resource scope.
 
         Tests defined within the resource scope apply to that resource,
@@ -77,7 +77,6 @@ class APISuite(object):
                             the RAML is used)
         """
         # pop parent arg passed in by the subresource decorator
-        parent = uri_params.pop('parent', None)
         full_path = raml.resource_full_path(path, parent)
 
         if full_path in self.raml.resources:
