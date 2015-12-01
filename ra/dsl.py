@@ -88,6 +88,7 @@ class APISuite(object):
                             request body. The data will be JSON-encoded when
                             the request is made. The default factory uses
                             the example body from the RAML.
+        :param parent:      parent ResourceScope, default None
         :param uri_params:  kw args are used to fill in URI parameters in the
                             path (by default, the uri_params example value from
                             the RAML is used)
