@@ -71,3 +71,12 @@ def listify(x):
         return list(iter(x))
     except TypeError:
         return [x]
+
+
+def guess_rootdir():
+    try:
+        import pytest
+        return str(pytest.config.rootdir)
+    except (ImportError, AttributeError):
+        import os
+        return os.path.curdir

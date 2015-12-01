@@ -1,5 +1,6 @@
 import fnmatch
 import simplejson as json
+import webtest
 from .utils import listify
 from .validate import RAMLValidator
 
@@ -32,8 +33,6 @@ def make_request_class(app, base=None):
     :return:    a new class for callable requests bound to :app: and pre-set
                 with :req_params:
     """
-    import webtest
-
     if base is None:
         base = webtest.TestRequest
 

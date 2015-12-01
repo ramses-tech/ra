@@ -1,6 +1,8 @@
+import os
 import warnings
 import six
 import simplejson as json
+import webtest
 
 from . import raml, marks
 from .factory import Examples
@@ -10,6 +12,7 @@ from .utils import (
     merge_query_params,
     path_to_identifier,
     caller_scope,
+    guess_rootdir,
 )
 
 
@@ -17,15 +20,28 @@ class APISuite(object):
     """Represents an API test suite.
     """
 
-    def __init__(self, raml_path_or_string, app, JSONEncoder=None):
-        """Instantiates an API test suite for the given RAML and app.
-        """
+    def __init__(self, raml_path_or_string, app='config:test.ini',
+                 relative_to=None, JSONEncoder=None):
+        """Instantiates an API test suite for the given :raml: and :app:."""
+
+        if relative_to is None:
+            relative_to = guess_rootdir()
+
+        if isinstance(app, webtest.TestApp):
+            app = app
+        else:
+            app = webtest.TestApp(app, relative_to=relative_to)
         self.app = app
-        self.test_suite = TestSuite()
+
+        if not raml.is_raml(raml_path_or_string):
+            raml_path_or_string = os.path.normpath(
+                os.path.join(relative_to, raml_path_or_string))
 
         self.raml_path, self.raml = _parse_raml(raml_path_or_string)
         self.path_prefix = path_from_uri(self.raml.base_uri)
         self.resource_scopes = []
+
+        self.test_suite = TestSuite()
 
         self.RequestClass = make_request_class(app)
 
