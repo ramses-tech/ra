@@ -126,6 +126,11 @@ class APISuite(object):
         autotest_module = Autotest(self, override=override).generate()
         marks.set(caller_scope(), 'autotest', autotest_module)
 
+    def __repr__(self):
+        return '{}("{}", app={})'.format(
+            self.__class__.__name__, self.raml_path, repr(self.app))
+
+
 
 class ResourceScope(object):
     """Represents a resource scope that contains tests for methods on the
@@ -328,7 +333,7 @@ class TestSuite(object):
 
 def _parse_raml(raml_path_or_string):
     "Returns the RAML file path (or None if arg is a string) and parsed RAML."
-    raml_path = None
+    raml_path = '<str>'
     if not raml.is_raml(raml_path_or_string):
         raml_path = raml_path_or_string
 
