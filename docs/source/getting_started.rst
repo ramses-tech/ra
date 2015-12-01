@@ -20,7 +20,7 @@ Requirements
 Basic Example
 -------------
 
-This is a quick example using Ra and WebTest to test some API resources.
+This is a quick example using Ra, pytest and WebTest to test some API resources.
 
 Assuming a simple RAML definition (and an app that implements it):
 
@@ -45,16 +45,12 @@ Create a new test file:
 .. code-block:: python
 
     # ./tests/test_api.py
+    import pytest
     import ra
-    import os
-    import webtest
 
-
-    appdir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-    ramlfile = os.path.join(appdir, 'api.raml')
-    testapp = webtest.TestApp('config:test.ini', relative_to=appdir)
-
-    api = ra.api(ramlfile, testapp)
+    # Paths are resolved relative to pytest's root (where its ini file lives).
+    # The Paste Deploy URI 'config:test.ini' is the default value for app.
+    api = ra.api('api.raml', app='config:test.ini')
 
     @api.resource('/people')
     def users_resource(users):
@@ -66,8 +62,9 @@ Create a new test file:
             response = req(status=201) # asserts status code is 201
             assert 'joe' in response
 
-This loads the app described by the Paste Deploy file ``./test.ini``
-and reads the RAML definition at ``./api.raml``.  Run tests with
+This loads the app described by the Paste Deploy file ``test.ini``
+and reads the RAML definition at ``api.raml``, relative to pytest's root
+directory (where its ini file lives, usually the project root).  Run tests with
 ``py.test tests/test_api.py``. Ra will read the RAML definition, make
 a request ``POST /people`` with the example body ``{ "name": "joe" }``.
 

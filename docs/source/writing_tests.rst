@@ -11,7 +11,8 @@ Tests are organized by resource in "resource scopes", which can be nested:
 
 .. code-block:: python
 
-    api = ra.api(ramlfile, testapp)
+    api = ra.api('example.raml')
+
     @api.resource('/users')
     def users_resource(users):
 
@@ -27,7 +28,7 @@ argument: it will be passed a ``ResourceScope`` object that is used
 within the scope to define tests or nested scopes.
 
 By default, requests made in resource tests will use the example body
-defined in the RAML if it exists (only 'application/json' is currently
+defined in the RAML if it exists (only ``'application/json'`` is currently
 supported). You can override this behaviour and use custom resource
 factories:
 
@@ -74,7 +75,7 @@ be overrided when the scope is declared:
         # ...
 
 Either way, for testing an item resource, you'll probably want to use
-before hooks (see `Hooks <./hooks.html>`_) to set up a resource by that
+fixtures (see `Test fixtures <./fixtures.html>`_) to set up a resource by that
 name before these tests.
 
 pytest fixtures defined in resource scopes are local to that scope
@@ -113,10 +114,10 @@ resource.
 
 The test function parameter ``req`` is provided by a pytest fixture.
 It's a callable ``webob.request.RequestBase``-like request object that
-is pre-bound to the app that was passed into ``ra.api(ramlfile, testapp)``,
-as well as the resource scope's path and the test's method declaration.
-(Note on ``req`` naming: ``request`` is already a builtin fixture name
-in pytest.)
+is pre-bound to the app that was passed (or assumed) when we called
+``ra.api()``, as well as the resource scope's path and the test's method
+declaration.  (Note on ``req`` naming: ``request`` is already a builtin
+fixture name in pytest.)
 
 To override request parameters, you can pass them into the test
 decorator:
@@ -164,9 +165,9 @@ checking the body and headers are compliant. You can disable this:
 .. code-block:: python
 
     @user.get
-    def get_with_my_factory(req):
+    def get_with_no_validation(req):
         req(validate=False)
-        # or only validate body
+        # or only validate body (valid values are "body", "headers")
         req(validate=['body'])
 
 Because tests are collected by pytest, you can pass any other fixtures

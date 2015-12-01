@@ -25,7 +25,8 @@ Table of Contents
 
    getting_started
    writing_tests
-   hooks
+   factories
+   test_fixtures
    autotest
    selecting_tests
    full_example

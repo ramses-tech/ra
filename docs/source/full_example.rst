@@ -1,33 +1,73 @@
 Full Example
 =============
 
-Example usage:
+A full example follows.
+
+The RAML:
+
+.. code-block:: yaml
+
+    #%RAML 0.8
+    # ./example.raml
+    ---
+    title: example API
+    mediaType: application/json
+    protocols: [HTTP]
+
+    /users:
+        get:
+            description: Get users
+        post:
+            description: Create a new user
+            body:
+                application/json:
+                    schema: !include schemas/user.json
+                    example: { "username": "marcy" }
+
+        /{username}:
+            get:
+                description: Get user by username
+
+    # ...
 
 .. code-block:: python
 
     # in tests/test_api.py:
-    import os
     import ra
-    import webtest
-    import myapp # wsgi app
+    import pytest
 
-    appdir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-    ramlfile = os.path.join(appdir, 'api.raml')
-    testapp = webtest.TestApp('config:test.ini', relative_to=appdir)
-    api = ra.api(ramlfile, testapp)
+    api = ra.api('example.raml', app='config:test.ini')
 
-    @api.hooks.before_each
-    def clear_db():
-      # clear test db before each test
-      myapp.clear_db()
+    @pytest.fixture(autouse=True)
+    def clear_database(request, req, app, examples):
+        # Remember:
+        # - ``req`` is the pre-bound Ra request for the current test
+        # - ``request`` is a built-in pytest fixture that holds info about
+        #   the current test context
+        # - ``app`` is the webtest-wrapped application
+        # - ``examples`` is a fixture providing the examples factory manager
+        #   for generating data based on RAML ``example`` properties.
+        import example_app
+        example_app.clear_db()
+        example_app.start_transaction()
 
+        # login for authentication
+        app.post('/login', { 'login': 'system', 'password': '123456' })
 
-    @api.hooks.before_each(exclude=['POST /users'])
-    def create_user():
-        # before every test except POST /users,
-        # build a User (model object) from a the 'user' example,
-        # found in the RAML definition for POST /users
-        User(**api.examples.build('user')).save()
+        if req.match(exclude='POST /users'):
+            # Before any test, except for the one that creates a user,
+            # we should create the user first.
+            #
+            # Passing 'user' to ``examples.build()``
+            # means to use the example defined for ``POST /users``
+            marcy = examples.build('user') # returns a dict
+            example_app.create_user_in_db(marcy)
+
+        @request.addfinalizer
+        def fin():
+            example_app.rollback_transaction()
+            app.reset() # clear cookies; logout
+
 
     # defining a resource scope:
 
@@ -95,7 +135,8 @@ Example usage:
 
             @user.get
             def get(req):
-                # This is equivalent to the default test for a resource
+                # This is equivalent to the autotest for a resource
                 # and method:
                 req()
 
+    api.autotest() # autotests will be generated
