@@ -3,7 +3,7 @@
 [![Documentation](https://readthedocs.org/projects/ra/badge/?version=stable)](http://ra.readthedocs.org)
 
 Ra is a test suite generator and helper library for testing APIs described
-by [RAML](http://raml.org/) documents.
+in [RAML](http://raml.org/).
 
 Out of the box, Ra provides a basic, automated test suite to test the routes
 declared in the RAML document. It provides test helpers for augmenting these
