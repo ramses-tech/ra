@@ -1,0 +1,14 @@
+_ clean up old code
+_ documentation on readthedocs
+_ write unit tests
+_ test query strings: try allowed values in querystrings
+_ better declarative factories for objects
+_ better database management around tests (memory db or transactional)
+_ resolve issues with ES bulk indexes
+
+maybe:
+_ custom tests with no special request params (headers, etc) should
+  override auto tests?
+_ scaffold for test files
+_ make unittest plugin so tests are collected by unittest
+_ make nose plugin so tests are collected by nose

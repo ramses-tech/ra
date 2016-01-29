@@ -1,7 +1,8 @@
 sphinx
+sphinxcontrib-fulltoc
 releases
 pytest
 pytest-cov
-mock
+pytest-mock
 
 -e .
