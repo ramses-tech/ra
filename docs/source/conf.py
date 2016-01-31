@@ -35,7 +35,7 @@ extensions = [
     'releases'
 ]
 
-releases_github_path = 'brandicted/ra'
+releases_github_path = 'ramses-tech/ra'
 releases_debug = True
 
 # Add any paths that contain templates here, relative to this directory.

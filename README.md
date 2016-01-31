@@ -1,5 +1,5 @@
 # `Ra`
-[![Build Status](https://travis-ci.org/brandicted/ra.svg?branch=master)](https://travis-ci.org/brandicted/ra)
+[![Build Status](https://travis-ci.org/ramses-tech/ra.svg?branch=master)](https://travis-ci.org/ramses-tech/ra)
 [![Documentation](https://readthedocs.org/projects/ra/badge/?version=stable)](http://ra.readthedocs.org)
 
 Ra is a test suite generator and helper library for testing APIs described
@@ -10,8 +10,8 @@ declared in the RAML document. It provides test helpers for augmenting these
 with custom tests to test application-specific logic, side effects, etc.
 
 Ra is primarily designed to provide testing support for
-[ramses](http://github.com/brandicted/ramses) and
-[nefertari](http://github.com/brandicted/nefertari) applications, but can
+[ramses](http://github.com/ramses-tech/ramses) and
+[nefertari](http://github.com/ramses-tech/nefertari) applications, but can
 be used with any WSGI-conformant, RAML-described API.
 
 It currently depends on pytest but may be adapted for other test frameworks

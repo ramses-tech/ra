@@ -1,7 +1,7 @@
 Ra
 ==
 
-Source code:`<http://github.com/brandicted/ra>`_
+Source code:`<http://github.com/ramses-tech/ra>`_
 
 Ra is a test helper and pytest plugin for testing APIs defined by RAML
 files.
