@@ -79,9 +79,28 @@ class ResourceScopeCollector(PyCollector):
         super(ResourceScopeCollector, self).__init__(funcobj.__name__, parent)
         self.funcobj = funcobj
 
+    def _reorder_collected(self, data):
+        """ Move DELETE http method test to the end of all tests.
+        """
+        priority = {
+            'post':     1,
+            'get':      2,
+            'put':      2,
+            'patch':    2,
+            'head':     2,
+            'options':  2,
+            'delete':   3,
+        }
+        data = sorted(
+            data,
+            key=lambda x: priority.get(getattr(x, 'name', ''), 4))
+        return data
+
     def collect(self):
         self.session._fixturemanager.parsefactories(self)
-        return super(ResourceScopeCollector, self).collect()
+        results = super(ResourceScopeCollector, self).collect()
+        results = self._reorder_collected(results)
+        return results
 
     def _getobj(self):
         return self._memoizedcall('_obj', self._importtestmodule)
@@ -118,9 +137,20 @@ class AutotestCollector(PyCollector):
         super(AutotestCollector, self).__init__(module.__name__, parent)
         self._module = module
 
+    def _reorder_collected(self, data):
+        """ Move item route tests after collection route tests. """
+        data_dict = {getattr(res, 'name', ''): res for res in data}
+        for name, res in data_dict.items():
+            if '}' in name:
+                data.remove(res)
+                data.append(res)
+        return data
+
     def collect(self):
         self.session._fixturemanager.parsefactories(self)
-        return super(AutotestCollector, self).collect()
+        results = super(AutotestCollector, self).collect()
+        results = self._reorder_collected(results)
+        return results
 
     def _getobj(self):
         return self._module
