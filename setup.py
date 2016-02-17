@@ -9,7 +9,7 @@ VERSION = open(os.path.join(here, 'VERSION')).read()
 requires = [
     'WebTest',
     'WSGIProxy2',
-    'ramlfications',
+    'ramlfications==0.1.8',
     'jsonschema',
     'six',
     'pytest',
