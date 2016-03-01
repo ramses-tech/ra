@@ -368,6 +368,7 @@ class Autotest(object):
                 @getattr(resource, method)
                 def test(req):
                     req()
+                    import time; time.sleep(0.5)  # DEBUG
                 test.__name__ = method
                 import inspect
                 inspect.currentframe().f_locals[method] = test
