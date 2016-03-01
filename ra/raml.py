@@ -143,10 +143,4 @@ def _map_resources(resources):
         resources_by_path[resource.path].setdefault(method, [])
         resources_by_path[resource.path][method] = resource
 
-    for methods in six.itervalues(resources_by_path):
-        if 'DELETE' in methods:
-            methods['DELETE'] = methods.pop('DELETE')
-
     return resources_by_path
-
-
