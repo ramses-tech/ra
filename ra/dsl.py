@@ -122,8 +122,12 @@ class APISuite(object):
 
         return decorator
 
-    def autotest(self, override=False):
-        autotest_module = Autotest(self, override=override).generate()
+    def autotest(self, override=False, settings=None):
+        autotest_module = Autotest(
+            self,
+            override=override,
+            settings=settings,
+        ).generate()
         marks.set(caller_scope(), 'autotest', autotest_module)
 
     def __repr__(self):
@@ -343,7 +347,10 @@ def _parse_raml(raml_path_or_string):
 
 
 class Autotest(object):
-    def __init__(self, api, override=False):
+    def __init__(self, api, override=False, settings=None):
+        if settings is None:
+            settings = {}
+        self.settings = settings
         self.api = api
         self.resources = api.raml.resources
         self.test_suite = api.test_suite
@@ -368,7 +375,8 @@ class Autotest(object):
                 @getattr(resource, method)
                 def test(req):
                     req()
-                    import time; time.sleep(0.5)  # DEBUG
+                    from time import sleep
+                    sleep(self.settings.get('postrequest_sleep', 0.5))
                 test.__name__ = method
                 import inspect
                 inspect.currentframe().f_locals[method] = test
